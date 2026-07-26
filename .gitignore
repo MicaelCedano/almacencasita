@@ -42,4 +42,5 @@ next-env.d.ts
 
 # local db json
 /db.json
+/scratch/
 
