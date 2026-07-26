@@ -152,151 +152,157 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
     toast.info('Carrito de vale vaciado.')
   }
 
-  // Draw voucher helper
-  useEffect(() => {
-    if (voucherOpen && selectedRequest && canvasRef.current) {
-      const canvas = canvasRef.current
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
+  // Draw voucher helper function
+  const drawVoucher = (canvas: HTMLCanvasElement | null) => {
+    if (!canvas || !selectedRequest) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
-      const itemsCount = selectedRequest.items?.length || 0
-      const baseHeight = 360
-      const itemsHeight = itemsCount * 22
-      const canvasHeight = baseHeight + itemsHeight
+    const itemsCount = selectedRequest.items?.length || 0
+    const baseHeight = 360
+    const itemsHeight = itemsCount * 22
+    const canvasHeight = baseHeight + itemsHeight
 
-      // Set canvas size (scaled)
-      canvas.width = 500
-      canvas.height = canvasHeight
+    // Set canvas size (scaled)
+    canvas.width = 500
+    canvas.height = canvasHeight
 
-      // Background
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, 500, canvasHeight)
+    // Background
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, 500, canvasHeight)
 
-      // Outer border
-      ctx.strokeStyle = '#e4e4e7'
-      ctx.lineWidth = 4
-      ctx.strokeRect(12, 12, 476, canvasHeight - 24)
+    // Outer border
+    ctx.strokeStyle = '#e4e4e7'
+    ctx.lineWidth = 4
+    ctx.strokeRect(12, 12, 476, canvasHeight - 24)
 
-      // Header
+    // Header
+    ctx.fillStyle = '#0f172a'
+    ctx.font = 'bold 24px Courier New'
+    ctx.textAlign = 'center'
+    ctx.fillText('ALMACEN CASITA', 250, 55)
+
+    ctx.fillStyle = '#4b5563'
+    ctx.font = '13px Courier New'
+    ctx.fillText('COMPROBANTE DE ENTREGA', 250, 80)
+
+    // Divider
+    ctx.strokeStyle = '#d4d4d8'
+    ctx.setLineDash([5, 5])
+    ctx.beginPath()
+    ctx.moveTo(30, 100)
+    ctx.lineTo(470, 100)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    // Metadata Info
+    ctx.textAlign = 'left'
+    ctx.fillStyle = '#4b5563'
+    ctx.font = '12px Courier New'
+    
+    const dateText = new Date(selectedRequest.fecha).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+    ctx.fillText(`ID VALE: ${selectedRequest.id.toUpperCase()}`, 40, 130)
+    ctx.fillText(`FECHA:   ${dateText}`, 40, 150)
+    ctx.fillText(`ENTREGA: ${selectedRequest.requesterName || 'Almacenista'}`, 40, 170)
+    ctx.fillText(`ESTADO:  APROBADO E INVENTARIADO`, 40, 190)
+
+    // Divider before list
+    ctx.strokeStyle = '#d4d4d8'
+    ctx.setLineDash([5, 5])
+    ctx.beginPath()
+    ctx.moveTo(30, 210)
+    ctx.lineTo(470, 210)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    // Table Header
+    let y = 235
+    ctx.fillStyle = '#1f2937'
+    ctx.font = 'bold 12px Courier New'
+    ctx.fillText('PRODUCTO (CODIGO)', 40, y)
+    ctx.fillText('CANTIDAD', 370, y)
+
+    y += 10
+    ctx.strokeStyle = '#d4d4d8'
+    ctx.beginPath()
+    ctx.moveTo(30, y)
+    ctx.lineTo(470, y)
+    ctx.stroke()
+    
+    y += 20
+
+    // Render items
+    let totalCajas = 0
+    let totalUnits = 0
+
+    for (const item of selectedRequest.items || []) {
       ctx.fillStyle = '#0f172a'
-      ctx.font = 'bold 24px Courier New'
-      ctx.textAlign = 'center'
-      ctx.fillText('ALMACEN CASITA', 250, 55)
-
-      ctx.fillStyle = '#4b5563'
-      ctx.font = '13px Courier New'
-      ctx.fillText('COMPROBANTE DE ENTREGA', 250, 80)
-
-      // Divider
-      ctx.strokeStyle = '#d4d4d8'
-      ctx.setLineDash([5, 5])
-      ctx.beginPath()
-      ctx.moveTo(30, 100)
-      ctx.lineTo(470, 100)
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      // Metadata Info
-      ctx.textAlign = 'left'
-      ctx.fillStyle = '#4b5563'
       ctx.font = '12px Courier New'
-      
-      const dateText = new Date(selectedRequest.fecha).toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
 
-      ctx.fillText(`ID VALE: ${selectedRequest.id.toUpperCase()}`, 40, 130)
-      ctx.fillText(`FECHA:   ${dateText}`, 40, 150)
-      ctx.fillText(`ENTREGA: ${selectedRequest.requesterName || 'Almacenista'}`, 40, 170)
-      ctx.fillText(`ESTADO:  APROBADO E INVENTARIADO`, 40, 190)
+      const name = `${item.nombre} (${item.capacidad} - ${item.color})`
+      const descText = `[${item.codigo}] ${name.substring(0, 26)}`
+      ctx.fillText(descText, 40, y)
+      ctx.fillText(`${item.cantidad} cajas`, 370, y)
 
-      // Divider before list
-      ctx.strokeStyle = '#d4d4d8'
-      ctx.setLineDash([5, 5])
-      ctx.beginPath()
-      ctx.moveTo(30, 210)
-      ctx.lineTo(470, 210)
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      // Table Header
-      let y = 235
-      ctx.fillStyle = '#1f2937'
-      ctx.font = 'bold 12px Courier New'
-      ctx.fillText('PRODUCTO (CODIGO)', 40, y)
-      ctx.fillText('CANTIDAD', 370, y)
-
-      y += 10
-      ctx.strokeStyle = '#d4d4d8'
-      ctx.beginPath()
-      ctx.moveTo(30, y)
-      ctx.lineTo(470, y)
-      ctx.stroke()
-      
-      y += 20
-
-      // Render items
-      let totalCajas = 0
-      let totalUnits = 0
-
-      for (const item of selectedRequest.items || []) {
-        ctx.fillStyle = '#0f172a'
-        ctx.font = '12px Courier New'
-
-        const name = `${item.nombre} (${item.capacidad} - ${item.color})`
-        const descText = `[${item.codigo}] ${name.substring(0, 26)}`
-        ctx.fillText(descText, 40, y)
-        ctx.fillText(`${item.cantidad} cajas`, 370, y)
-
-        totalCajas += item.cantidad
-        totalUnits += item.cantidad * item.unidades_por_caja
-        y += 22
-      }
-
-      // Divider after list
-      ctx.strokeStyle = '#d4d4d8'
-      ctx.setLineDash([5, 5])
-      ctx.beginPath()
-      ctx.moveTo(30, y - 5)
-      ctx.lineTo(470, y - 5)
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      // Totals
-      y += 15
-      ctx.fillStyle = '#4b5563'
-      ctx.fillText('TOTAL CAJAS:', 40, y)
-      ctx.fillStyle = '#047857'
-      ctx.font = 'bold 13px Courier New'
-      ctx.fillText(`${totalCajas} cajas`, 190, y)
-
-      y += 20
-      ctx.fillStyle = '#4b5563'
-      ctx.font = '12px Courier New'
-      ctx.fillText('TOTAL UDS:', 40, y)
-      ctx.fillStyle = '#0f172a'
-      ctx.fillText(`${totalUnits} celulares`, 190, y)
-
-      y += 35
-      // barcode simulation
-      ctx.fillStyle = '#4b5563'
-      ctx.textAlign = 'center'
-      ctx.font = '10px Courier New'
-      ctx.fillText('*' + selectedRequest.id.toUpperCase() + '*', 250, y + 40)
-      
-      ctx.fillStyle = '#1f2937'
-      let startX = 135
-      for (let i = 0; i < 35; i++) {
-        const lineWidth = (Math.sin(i * 3.7) > 0) ? 5 : 2
-        ctx.fillRect(startX, y, lineWidth, 28)
-        startX += lineWidth + (i % 3 === 0 ? 3 : 1)
-      }
+      totalCajas += item.cantidad
+      totalUnits += item.cantidad * item.unidades_por_caja
+      y += 22
     }
-  }, [voucherOpen, selectedRequest, products])
+
+    // Divider after list
+    ctx.strokeStyle = '#d4d4d8'
+    ctx.setLineDash([5, 5])
+    ctx.beginPath()
+    ctx.moveTo(30, y - 5)
+    ctx.lineTo(470, y - 5)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    // Totals
+    y += 15
+    ctx.fillStyle = '#4b5563'
+    ctx.fillText('TOTAL CAJAS:', 40, y)
+    ctx.fillStyle = '#047857'
+    ctx.font = 'bold 13px Courier New'
+    ctx.fillText(`${totalCajas} cajas`, 190, y)
+
+    y += 20
+    ctx.fillStyle = '#4b5563'
+    ctx.font = '12px Courier New'
+    ctx.fillText('TOTAL UDS:', 40, y)
+    ctx.fillStyle = '#0f172a'
+    ctx.fillText(`${totalUnits} celulares`, 190, y)
+
+    y += 35
+    // barcode simulation
+    ctx.fillStyle = '#4b5563'
+    ctx.textAlign = 'center'
+    ctx.font = '10px Courier New'
+    ctx.fillText('*' + selectedRequest.id.toUpperCase() + '*', 250, y + 40)
+    
+    ctx.fillStyle = '#1f2937'
+    let startX = 135
+    for (let i = 0; i < 35; i++) {
+      const lineWidth = (Math.sin(i * 3.7) > 0) ? 5 : 2
+      ctx.fillRect(startX, y, lineWidth, 28)
+      startX += lineWidth + (i % 3 === 0 ? 3 : 1)
+    }
+  }
+
+  // React Callback Ref to handle dynamic Dialog rendering race condition
+  const canvasRefCallback = useCallback((node: HTMLCanvasElement | null) => {
+    canvasRef.current = node
+    if (node) {
+      drawVoucher(node)
+    }
+  }, [selectedRequest])
 
   // Download Voucher PNG
   const handleDownloadVoucher = () => {
@@ -1295,7 +1301,7 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
 
           {/* Canvas */}
           <div className="border border-zinc-800 rounded-xl overflow-hidden bg-black shadow-inner my-2">
-            <canvas ref={canvasRef} className="w-full max-w-[280px] h-auto block" />
+            <canvas ref={canvasRefCallback} className="w-full max-w-[280px] h-auto block" />
           </div>
 
           {/* Action buttons */}
