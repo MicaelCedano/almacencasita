@@ -25,33 +25,14 @@ export const dynamic = 'force-dynamic'
 
 export default async function ProductosPage() {
   const isLocal = !isSupabaseConfigured()
-  let role: 'admin' | 'empleado' = 'empleado'
-
-  if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) redirect('/login')
-    const user = JSON.parse(sessionCookie.value)
-    role = user.role
-  } else {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/login')
-    
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    if (profile) role = profile.role as 'admin' | 'empleado'
-  }
-
-  // Only admins can access this page
-  if (role !== 'admin') {
-    redirect('/dashboard')
-  }
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get('local_session_user')
+  if (!sessionCookie) redirect('/login')
+  const user = JSON.parse(sessionCookie.value)
+  if (user.role !== 'admin') redirect('/dashboard')
 
   let products: ProductRow[] = []
+
   if (isLocal) {
     const db = readLocalDB()
     products = db.products.map((p) => ({
@@ -79,7 +60,6 @@ export default async function ProductosPage() {
     if (data) products = data as unknown as ProductRow[]
   }
 
-  // Sort products by code ascending
   const sortedProducts = [...products].sort((a, b) => a.codigo.localeCompare(b.codigo))
 
   return (

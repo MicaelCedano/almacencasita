@@ -5,10 +5,10 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { isSupabaseConfigured, readLocalDB, writeLocalDB } from '@/lib/db'
+import crypto from 'crypto'
 
-// Helper to convert username to virtual email (for Supabase mode)
-function getVirtualEmail(username: string): string {
-  return `${username.trim().toLowerCase()}@almacencasita.test`
+function hashPassword(password: string): string {
+  return crypto.createHash('sha256').update(password).digest('hex')
 }
 
 export async function login(state: unknown, formData: { username: string; password?: string }) {
@@ -46,32 +46,40 @@ export async function login(state: unknown, formData: { username: string; passwo
     redirect('/dashboard')
   }
 
-  // --- Real Supabase Auth ---
+  // --- Auth custom contra Supabase DB ---
   const supabase = await createClient()
-  const email = getVirtualEmail(formData.username)
+  const username = formData.username.trim().toLowerCase()
 
-  const { error, data } = await supabase.auth.signInWithPassword({
-    email,
-    password: formData.password || '',
-  })
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, username, password_hash, full_name, role, approved')
+    .eq('username', username)
+    .single()
 
-  if (error) {
+  if (!profile) {
     return { success: false, error: 'Usuario o contraseña incorrectos.' }
   }
 
-  // Check if profile is approved in Supabase
-  if (data?.user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('approved')
-      .eq('id', data.user.id)
-      .single()
-
-    if (profile && !profile.approved) {
-      await supabase.auth.signOut()
-      return { success: false, error: 'Tu cuenta está pendiente de aprobación por el administrador.' }
-    }
+  const inputHash = hashPassword(formData.password || '')
+  if (profile.password_hash !== inputHash) {
+    return { success: false, error: 'Usuario o contraseña incorrectos.' }
   }
+
+  if (!profile.approved) {
+    return { success: false, error: 'Tu cuenta está pendiente de aprobación por el administrador.' }
+  }
+
+  const cookieStore = await cookies()
+  cookieStore.set('local_session_user', JSON.stringify({
+    id: profile.id,
+    username: profile.username,
+    fullName: profile.full_name,
+    role: profile.role
+  }), {
+    path: '/',
+    httpOnly: true,
+    maxAge: 60 * 60 * 24
+  })
 
   revalidatePath('/', 'layout')
   redirect('/dashboard')
@@ -93,7 +101,6 @@ export async function signup(
       return { success: false, error: 'El nombre de usuario ya está registrado.' }
     }
 
-    // Admins are approved automatically, employees (almacenistas) need approval
     const approved = formData.role === 'admin'
 
     const newUser = {
@@ -125,30 +132,42 @@ export async function signup(
     }), {
       path: '/',
       httpOnly: true,
-      maxAge: 60 * 60 * 24 // 1 day
+      maxAge: 60 * 60 * 24
     })
 
     revalidatePath('/', 'layout')
     redirect('/dashboard')
   }
 
-  // --- Real Supabase Auth ---
+  // --- Auth custom contra Supabase DB ---
   const supabase = await createClient()
-  const email = getVirtualEmail(formData.username)
+  const username = formData.username.trim().toLowerCase()
+
+  // Check if username exists
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('username', username)
+    .single()
+
+  if (existing) {
+    return { success: false, error: 'El nombre de usuario ya está registrado.' }
+  }
 
   const approved = formData.role === 'admin'
+  const password_hash = hashPassword(formData.password || '')
 
-  const { error } = await supabase.auth.signUp({
-    email,
-    password: formData.password || '',
-    options: {
-      data: {
-        full_name: formData.fullName,
-        role: formData.role,
-        approved
-      },
-    },
-  })
+  const { data: newProfile, error } = await supabase
+    .from('profiles')
+    .insert({
+      username,
+      password_hash,
+      full_name: formData.fullName.trim(),
+      role: formData.role,
+      approved
+    })
+    .select('id, username, full_name, role')
+    .single()
 
   if (error) {
     return { success: false, error: error.message }
@@ -162,23 +181,25 @@ export async function signup(
     }
   }
 
+  const cookieStore = await cookies()
+  cookieStore.set('local_session_user', JSON.stringify({
+    id: newProfile.id,
+    username: newProfile.username,
+    fullName: newProfile.full_name,
+    role: newProfile.role
+  }), {
+    path: '/',
+    httpOnly: true,
+    maxAge: 60 * 60 * 24
+  })
+
   revalidatePath('/', 'layout')
   redirect('/dashboard')
 }
 
 export async function logout() {
-  const isLocal = !isSupabaseConfigured()
-
-  if (isLocal) {
-    const cookieStore = await cookies()
-    cookieStore.delete('local_session_user')
-    revalidatePath('/', 'layout')
-    redirect('/login')
-  }
-
-  // --- Real Supabase Auth ---
-  const supabase = await createClient()
-  await supabase.auth.signOut()
+  const cookieStore = await cookies()
+  cookieStore.delete('local_session_user')
   revalidatePath('/', 'layout')
   redirect('/login')
 }

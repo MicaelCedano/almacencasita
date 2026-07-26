@@ -22,26 +22,17 @@ interface MovementRecord {
   } | null;
 }
 
-// Force dynamic rendering to ensure fresh audit logs
 export const dynamic = 'force-dynamic'
 
 export default async function MovimientosPage() {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get('local_session_user')
+  if (!sessionCookie) redirect('/login')
+  const user = JSON.parse(sessionCookie.value)
+  if (user.role !== 'admin') redirect('/dashboard')
 
   if (isLocal) {
-    // 1. Check local session and role
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) {
-      redirect('/login')
-    }
-
-    const user = JSON.parse(sessionCookie.value)
-    if (user.role !== 'admin') {
-      redirect('/dashboard')
-    }
-
-    // 2. Read movements from local JSON DB and join products/users
     const db = readLocalDB()
     const mappedMovements = db.movements.map((m) => {
       const product = db.products.find((p) => p.id === m.producto_id)
@@ -58,7 +49,6 @@ export default async function MovimientosPage() {
       } as MovementRecord
     })
 
-    // Sort by date descending
     mappedMovements.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 
     return (
@@ -69,7 +59,7 @@ export default async function MovimientosPage() {
             <span>Historial de Movimientos (Local)</span>
           </h1>
           <p className="text-sm text-zinc-400">
-            Registro de auditoría local de todas las entradas y salidas de mercancía registradas por el personal de administración.
+            Registro de auditoría local de todas las entradas y salidas de mercancía.
           </p>
         </div>
 
@@ -171,26 +161,9 @@ export default async function MovimientosPage() {
     )
   }
 
-  // --- Real Supabase Mode ---
+  // --- Supabase DB Mode ---
   const supabase = await createClient()
 
-  // 1. Authentication and role-check
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    redirect('/login')
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    redirect('/dashboard')
-  }
-
-  // 2. Fetch movements audit log ordered by date descending
   const { data: movements, error } = await supabase
     .from('movements')
     .select(`
@@ -223,7 +196,7 @@ export default async function MovimientosPage() {
           <span>Historial de Movimientos</span>
         </h1>
         <p className="text-sm text-zinc-400">
-          Registro de auditoría de todas las entradas y salidas de mercancía registradas por el personal de administración.
+          Registro de auditoría de todas las entradas y salidas de mercancía.
         </p>
       </div>
 

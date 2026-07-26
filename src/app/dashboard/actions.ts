@@ -5,6 +5,18 @@ import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { isSupabaseConfigured, readLocalDB, writeLocalDB } from '@/lib/db'
 
+/** Get session user from cookie (works for both local and Supabase modes) */
+function getSessionUser(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  const sessionCookie = cookieStore.get('local_session_user')
+  if (!sessionCookie) return null
+  return JSON.parse(sessionCookie.value) as {
+    id: string;
+    username: string;
+    fullName: string;
+    role: 'admin' | 'empleado';
+  }
+}
+
 export async function createProduct(formData: {
   codigo: string;
   nombre: string;
@@ -15,18 +27,12 @@ export async function createProduct(formData: {
   unidades_por_caja: number;
 }) {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden agregar productos.' }
 
   if (isLocal) {
-    // Check local session and role
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) return { success: false, error: 'No autenticado' }
-    
-    const user = JSON.parse(sessionCookie.value)
-    if (user.role !== 'admin') {
-      return { success: false, error: 'No autorizado. Solo administradores pueden agregar productos.' }
-    }
-
     const db = readLocalDB()
     const exists = db.products.some(
       (p) => p.codigo.toUpperCase() === formData.codigo.toUpperCase()
@@ -58,24 +64,9 @@ export async function createProduct(formData: {
     return { success: true }
   }
 
-  // --- Real Supabase ---
+  // --- Supabase DB ---
   const supabase = await createClient()
 
-  // Verify authentication and role
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return { success: false, error: 'No autorizado. Solo administradores pueden agregar productos.' }
-  }
-
-  // Insert product in database with color and capacidad
   const { error } = await supabase
     .from('products')
     .insert({
@@ -103,30 +94,23 @@ export async function createProduct(formData: {
 
 export async function createMovement(formData: {
   producto_id: string;
-  cantidad: number; // in boxes
+  cantidad: number;
   tipo: 'Entrada' | 'Salida';
   motivo: string;
 }) {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden registrar movimientos.' }
 
   if (isLocal) {
-    // Check local session and role
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) return { success: false, error: 'No autenticado' }
-    
-    const user = JSON.parse(sessionCookie.value)
-    if (user.role !== 'admin') {
-      return { success: false, error: 'No autorizado. Solo administradores pueden registrar movimientos.' }
-    }
-
     const db = readLocalDB()
     const product = db.products.find((p) => p.id === formData.producto_id)
     if (!product) {
       return { success: false, error: 'Producto no encontrado.' }
     }
 
-    // Emulate trigger validation
     if (formData.tipo === 'Salida') {
       if (product.cajas < formData.cantidad) {
         return { success: false, error: 'Stock de cajas insuficiente para realizar la salida.' }
@@ -136,45 +120,28 @@ export async function createMovement(formData: {
       product.cajas += formData.cantidad
     }
 
-    // Update total units count
     product.cantidad = product.cajas * product.unidades_por_caja
     product.fecha_actualizacion = new Date().toISOString()
 
-    const newMovement = {
+    db.movements.push({
       id: 'mov_' + Math.random().toString(36).substr(2, 9),
       producto_id: formData.producto_id,
-      cantidad: formData.cantidad, // number of boxes
+      cantidad: formData.cantidad,
       tipo: formData.tipo,
       motivo: formData.motivo.trim(),
       usuario_id: user.id,
       fecha: new Date().toISOString()
-    }
+    })
 
-    db.movements.push(newMovement)
     writeLocalDB(db)
 
     revalidatePath('/dashboard')
     return { success: true }
   }
 
-  // --- Real Supabase ---
+  // --- Supabase DB ---
   const supabase = await createClient()
 
-  // Verify authentication and role
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return { success: false, error: 'No autorizado. Solo administradores pueden registrar movimientos.' }
-  }
-
-  // Insert the movement. The stock trigger will update both product.cajas and product.cantidad
   const { error } = await supabase
     .from('movements')
     .insert({
@@ -195,17 +162,12 @@ export async function createMovement(formData: {
 
 export async function deleteProduct(id: string) {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden eliminar productos.' }
 
   if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) return { success: false, error: 'No autenticado' }
-    
-    const user = JSON.parse(sessionCookie.value)
-    if (user.role !== 'admin') {
-      return { success: false, error: 'No autorizado. Solo administradores pueden eliminar productos.' }
-    }
-
     const db = readLocalDB()
     db.products = db.products.filter(p => p.id !== id)
     db.movements = db.movements.filter(m => m.producto_id !== id)
@@ -216,21 +178,8 @@ export async function deleteProduct(id: string) {
     return { success: true }
   }
 
-  // --- Real Supabase ---
+  // --- Supabase DB ---
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return { success: false, error: 'No autorizado. Solo administradores pueden eliminar productos.' }
-  }
-
   const { error } = await supabase
     .from('products')
     .delete()
@@ -255,24 +204,18 @@ export async function updateProduct(id: string, formData: {
   unidades_por_caja: number;
 }) {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden editar productos.' }
 
   if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) return { success: false, error: 'No autenticado' }
-    
-    const user = JSON.parse(sessionCookie.value)
-    if (user.role !== 'admin') {
-      return { success: false, error: 'No autorizado. Solo administradores pueden editar productos.' }
-    }
-
     const db = readLocalDB()
     const productIndex = db.products.findIndex((p) => p.id === id)
     if (productIndex === -1) {
       return { success: false, error: 'Producto no encontrado.' }
     }
 
-    // Check if new code already exists on another product
     const codeExists = db.products.some(
       (p) => p.id !== id && p.codigo.toUpperCase() === formData.codigo.toUpperCase()
     )
@@ -298,22 +241,9 @@ export async function updateProduct(id: string, formData: {
     return { success: true }
   }
 
-  // --- Real Supabase ---
+  // --- Supabase DB ---
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return { success: false, error: 'No autorizado. Solo administradores pueden editar productos.' }
-  }
-
-  // Get current boxes count to recalculate quantity
   const { data: currentProduct, error: fetchError } = await supabase
     .from('products')
     .select('cajas')
@@ -352,17 +282,12 @@ export async function updateProduct(id: string, formData: {
 
 export async function approveUser(userId: string) {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado.' }
 
   if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) return { success: false, error: 'No autenticado' }
-
-    const user = JSON.parse(sessionCookie.value)
-    if (user.role !== 'admin') {
-      return { success: false, error: 'No autorizado.' }
-    }
-
     const db = readLocalDB()
     const u = db.users.find((usr) => usr.id === userId)
     if (u) {
@@ -374,21 +299,8 @@ export async function approveUser(userId: string) {
     return { success: true }
   }
 
-  // --- Real Supabase ---
+  // --- Supabase DB ---
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return { success: false, error: 'No autorizado.' }
-  }
-
   const { error } = await supabase
     .from('profiles')
     .update({ approved: true })
@@ -402,17 +314,12 @@ export async function approveUser(userId: string) {
 
 export async function deleteUser(userId: string) {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado.' }
 
   if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) return { success: false, error: 'No autenticado' }
-
-    const user = JSON.parse(sessionCookie.value)
-    if (user.role !== 'admin') {
-      return { success: false, error: 'No autorizado.' }
-    }
-
     const db = readLocalDB()
     db.users = db.users.filter((usr) => usr.id !== userId)
     writeLocalDB(db)
@@ -421,21 +328,8 @@ export async function deleteUser(userId: string) {
     return { success: true }
   }
 
-  // --- Real Supabase ---
+  // --- Supabase DB ---
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return { success: false, error: 'No autorizado.' }
-  }
-
   const { error } = await supabase
     .from('profiles')
     .delete()
@@ -452,44 +346,36 @@ export async function createWithdrawalRequest(formData: {
   motivo: string;
 }) {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
 
   if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) return { success: false, error: 'No autenticado' }
-
-    const user = JSON.parse(sessionCookie.value)
-
     const db = readLocalDB()
     
-    // Validate each item exists in db
     for (const item of formData.items) {
       const product = db.products.find((p) => p.id === item.producto_id)
       if (!product) return { success: false, error: 'Uno de los productos seleccionados no existe.' }
     }
 
-    const newRequest = {
+    db.requests = db.requests || []
+    db.requests.push({
       id: 'req_' + Math.random().toString(36).substr(2, 9),
       items: formData.items,
       motivo: formData.motivo.trim(),
       usuario_id: user.id,
-      estado: 'Pendiente' as const,
+      estado: 'Pendiente',
       fecha: new Date().toISOString()
-    }
+    })
 
-    db.requests = db.requests || []
-    db.requests.push(newRequest)
     writeLocalDB(db)
 
     revalidatePath('/dashboard')
     return { success: true }
   }
 
-  // --- Real Supabase ---
+  // --- Supabase DB ---
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
-
   const { error } = await supabase
     .from('requests')
     .insert({
@@ -507,23 +393,17 @@ export async function createWithdrawalRequest(formData: {
 
 export async function approveWithdrawalRequest(requestId: string) {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden aprobar solicitudes.' }
 
   if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) return { success: false, error: 'No autenticado' }
-
-    const user = JSON.parse(sessionCookie.value)
-    if (user.role !== 'admin') {
-      return { success: false, error: 'No autorizado. Solo administradores pueden aprobar solicitudes.' }
-    }
-
     const db = readLocalDB()
     const request = db.requests?.find((r) => r.id === requestId)
     if (!request) return { success: false, error: 'Solicitud no encontrada.' }
     if (request.estado !== 'Pendiente') return { success: false, error: 'La solicitud ya fue procesada.' }
 
-    // 1. Verify stock for ALL items in batch first
     for (const item of request.items) {
       const product = db.products.find((p) => p.id === item.producto_id)
       if (!product) return { success: false, error: 'Producto no encontrado.' }
@@ -532,19 +412,15 @@ export async function approveWithdrawalRequest(requestId: string) {
       }
     }
 
-    // 2. Perform atomic deduction and movements registration
     const requestUser = db.users.find(u => u.id === request.usuario_id)
     const requesterName = requestUser ? requestUser.fullName : 'Almacenista'
 
     for (const item of request.items) {
       const product = db.products.find((p) => p.id === item.producto_id)!
-      
-      // Deduct stock
       product.cajas -= item.cantidad
       product.cantidad = product.cajas * product.unidades_por_caja
       product.fecha_actualizacion = new Date().toISOString()
 
-      // Create stock movement
       db.movements.push({
         id: 'mov_' + Math.random().toString(36).substr(2, 9),
         producto_id: item.producto_id,
@@ -556,7 +432,6 @@ export async function approveWithdrawalRequest(requestId: string) {
       })
     }
 
-    // Update request state
     request.estado = 'Aprobado'
     writeLocalDB(db)
 
@@ -565,22 +440,9 @@ export async function approveWithdrawalRequest(requestId: string) {
     return { success: true }
   }
 
-  // --- Real Supabase ---
+  // --- Supabase DB ---
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return { success: false, error: 'No autorizado. Solo administradores pueden aprobar solicitudes.' }
-  }
-
-  // Fetch the request details
   const { data: request, error: fetchErr } = await supabase
     .from('requests')
     .select('items, motivo, usuario_id')
@@ -591,7 +453,7 @@ export async function approveWithdrawalRequest(requestId: string) {
 
   const items = request.items as { producto_id: string; cantidad: number }[]
 
-  // 1. Verify stock for ALL items in batch first
+  // Verify stock
   for (const item of items) {
     const { data: product } = await supabase
       .from('products')
@@ -605,7 +467,7 @@ export async function approveWithdrawalRequest(requestId: string) {
     }
   }
 
-  // 2. Set request to Approved
+  // Set request to Approved
   const { error: reqError } = await supabase
     .from('requests')
     .update({ estado: 'Aprobado' })
@@ -613,7 +475,7 @@ export async function approveWithdrawalRequest(requestId: string) {
 
   if (reqError) return { success: false, error: reqError.message }
 
-  // 3. Fetch requester profile name
+  // Fetch requester name
   const { data: requester } = await supabase
     .from('profiles')
     .select('full_name')
@@ -622,7 +484,7 @@ export async function approveWithdrawalRequest(requestId: string) {
 
   const requesterName = requester?.full_name || 'Almacenista'
 
-  // 4. Insert movements in loop
+  // Insert movements
   for (const item of items) {
     const { error: movError } = await supabase
       .from('movements')
@@ -646,17 +508,12 @@ export async function approveWithdrawalRequest(requestId: string) {
 
 export async function rejectWithdrawalRequest(requestId: string) {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden rechazar solicitudes.' }
 
   if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) return { success: false, error: 'No autenticado' }
-
-    const user = JSON.parse(sessionCookie.value)
-    if (user.role !== 'admin') {
-      return { success: false, error: 'No autorizado. Solo administradores pueden rechazar solicitudes.' }
-    }
-
     const db = readLocalDB()
     const request = db.requests?.find((r) => r.id === requestId)
     if (!request) return { success: false, error: 'Solicitud no encontrada.' }
@@ -672,21 +529,8 @@ export async function rejectWithdrawalRequest(requestId: string) {
     return { success: true }
   }
 
-  // --- Real Supabase ---
+  // --- Supabase DB ---
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return { success: false, error: 'No autorizado. Solo administradores pueden rechazar solicitudes.' }
-  }
-
   const { error } = await supabase
     .from('requests')
     .update({ estado: 'Rechazado' })

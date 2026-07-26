@@ -39,31 +39,11 @@ export const dynamic = 'force-dynamic'
 
 export default async function SolicitudesPage() {
   const isLocal = !isSupabaseConfigured()
-  let role: 'admin' | 'empleado' = 'empleado'
-
-  if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) redirect('/login')
-    const user = JSON.parse(sessionCookie.value)
-    role = user.role
-  } else {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/login')
-    
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    if (profile) role = profile.role as 'admin' | 'empleado'
-  }
-
-  // Admins only
-  if (role !== 'admin') {
-    redirect('/dashboard')
-  }
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get('local_session_user')
+  if (!sessionCookie) redirect('/login')
+  const user = JSON.parse(sessionCookie.value)
+  if (user.role !== 'admin') redirect('/dashboard')
 
   let requests: RequestRecord[] = []
   let pendingUsers: UserRecord[] = []
@@ -71,9 +51,8 @@ export default async function SolicitudesPage() {
   if (isLocal) {
     const db = readLocalDB()
     
-    // Map requests
     requests = (db.requests || []).map((r) => {
-      const user = db.users.find((u) => u.id === r.usuario_id)
+      const reqUser = db.users.find((u) => u.id === r.usuario_id)
       const mappedItems = (r.items || []).map((item) => {
         const product = db.products.find((p) => p.id === item.producto_id)
         return {
@@ -95,14 +74,12 @@ export default async function SolicitudesPage() {
         estado: r.estado,
         fecha: r.fecha,
         items: mappedItems,
-        requesterName: user ? user.fullName : 'Almacenista'
+        requesterName: reqUser ? reqUser.fullName : 'Almacenista'
       } as RequestRecord
     })
 
-    // Sort requests by date descending
     requests.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 
-    // Fetch unapproved users
     pendingUsers = db.users
       .filter((u) => !u.approved)
       .map((u) => ({
@@ -118,13 +95,13 @@ export default async function SolicitudesPage() {
     // Fetch pending users
     const { data: usersData } = await supabase
       .from('profiles')
-      .select('id, full_name, role, approved')
+      .select('id, username, full_name, role, approved')
       .eq('approved', false)
 
     if (usersData) {
       pendingUsers = usersData.map((u) => ({
         id: u.id,
-        username: u.full_name.toLowerCase().replace(/\s+/g, ''), // simulated username
+        username: u.username,
         fullName: u.full_name,
         role: u.role as 'admin' | 'empleado',
         approved: u.approved
@@ -148,7 +125,6 @@ export default async function SolicitudesPage() {
       .order('fecha', { ascending: false })
 
     if (requestsData) {
-      // Fetch all products to match details on server
       const { data: allProducts } = await supabase
         .from('products')
         .select('id, codigo, nombre, color, capacidad, unidades_por_caja, marca')
@@ -162,9 +138,7 @@ export default async function SolicitudesPage() {
         estado: 'Pendiente' | 'Aprobado' | 'Rechazado';
         fecha: string;
         items: { producto_id: string; cantidad: number }[];
-        profiles: {
-          full_name: string;
-        } | null;
+        profiles: { full_name: string } | null;
       }[]).map((r) => {
         const mappedItems = r.items.map((item) => {
           const product = productMap.get(item.producto_id)

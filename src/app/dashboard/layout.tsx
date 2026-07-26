@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Warehouse, Package, History, LogOut, User, Shield, Smartphone, ShieldAlert } from 'lucide-react'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { isSupabaseConfigured } from '@/lib/db'
+import { isSupabaseConfigured, readLocalDB } from '@/lib/db'
 
 export default async function DashboardLayout({
   children,
@@ -18,33 +18,14 @@ export default async function DashboardLayout({
   let fullName = 'Cargando...'
   let email = ''
 
-  if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    const user = sessionCookie ? JSON.parse(sessionCookie.value) : null
-    if (user) {
-      role = user.role
-      fullName = user.fullName
-      email = `@${user.username}`
-    }
-  } else {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (user) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-      if (data) {
-        role = data.role as 'admin' | 'empleado'
-        fullName = data.full_name
-      }
-      email = user.email || ''
-    }
+  // Get user from cookie (works for both local and Supabase-DB modes)
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get('local_session_user')
+  const user = sessionCookie ? JSON.parse(sessionCookie.value) : null
+  if (user) {
+    role = user.role
+    fullName = user.fullName
+    email = `@${user.username}`
   }
 
   return (

@@ -29,20 +29,15 @@ interface RequestRecord {
 
 export default async function DashboardPage() {
   const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get('local_session_user')
+  const user = sessionCookie ? JSON.parse(sessionCookie.value) : null
+  const role: 'admin' | 'empleado' = user?.role || 'empleado'
+  const activeUserId = user?.id || ''
 
-  let role: 'admin' | 'empleado' = 'empleado'
-  let activeUserId = ''
   let userRequests: RequestRecord[] = []
 
   if (isLocal) {
-    // 1. Fetch role and ID from cookie session
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    const user = sessionCookie ? JSON.parse(sessionCookie.value) : null
-    role = user?.role || 'empleado'
-    activeUserId = user?.id || ''
-
-    // 2. Read products from local JSON DB
     const db = readLocalDB()
     const productsWithMovements = db.products.map((p) => {
       const productMovements = db.movements
@@ -60,7 +55,6 @@ export default async function DashboardPage() {
       }
     })
 
-    // Fetch requests for this Almacenista (or all for Admin)
     const localRequests = db.requests || []
     const filteredRequests = role === 'admin' 
       ? localRequests 
@@ -93,10 +87,8 @@ export default async function DashboardPage() {
       }
     })
 
-    // Sort requests by date descending
     userRequests.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 
-    // Sort products by name ascending
     const sortedProducts = [...productsWithMovements].sort((a, b) =>
       a.nombre.localeCompare(b.nombre)
     )
@@ -110,28 +102,10 @@ export default async function DashboardPage() {
     )
   }
 
-  // --- Real Supabase Mode ---
+  // --- Supabase DB Mode ---
   const supabase = await createClient()
 
-  // 1. Fetch current logged-in user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (user) {
-    activeUserId = user.id
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    
-    if (profile) {
-      role = profile.role as 'admin' | 'empleado'
-    }
-  }
-
-  // 2. Fetch products along with their movements
+  // 1. Fetch products with their movements
   const { data: products, error } = await supabase
     .from('products')
     .select(`
@@ -160,7 +134,7 @@ export default async function DashboardPage() {
     console.error('Error fetching products from database:', error)
   }
 
-  // 3. Fetch requests from Supabase
+  // 2. Fetch requests
   let supabaseRequestsQuery = supabase
     .from('requests')
     .select(`
@@ -183,7 +157,6 @@ export default async function DashboardPage() {
   const { data: reqsData } = await supabaseRequestsQuery
 
   if (reqsData) {
-    // Fetch all products to match details on server
     const { data: allProducts } = await supabase
       .from('products')
       .select('id, codigo, nombre, color, capacidad, unidades_por_caja, marca')
@@ -197,9 +170,7 @@ export default async function DashboardPage() {
       estado: 'Pendiente' | 'Aprobado' | 'Rechazado';
       fecha: string;
       items: { producto_id: string; cantidad: number }[];
-      profiles: {
-        full_name: string;
-      } | null;
+      profiles: { full_name: string } | null;
     }[]).map((r) => {
       const mappedItems = r.items.map((item) => {
         const product = productMap.get(item.producto_id)
