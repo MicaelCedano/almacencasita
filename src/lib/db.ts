@@ -1,7 +1,9 @@
 import fs from 'fs'
 import path from 'path'
 
-const DB_PATH = path.join(process.cwd(), 'db.json')
+const DB_PATH = process.env.VERCEL
+  ? path.join('/tmp', 'db.json')
+  : path.join(process.cwd(), 'db.json')
 
 export interface LocalUser {
   id: string;
@@ -115,7 +117,11 @@ export function readLocalDB(): LocalDB {
       movements: [],
       requests: []
     }
-    fs.writeFileSync(DB_PATH, JSON.stringify(initialDB, null, 2), 'utf-8')
+    try {
+      fs.writeFileSync(DB_PATH, JSON.stringify(initialDB, null, 2), 'utf-8')
+    } catch (e) {
+      console.error('No se pudo crear db.json (entorno de solo lectura?):', e)
+    }
     return initialDB
   }
   
