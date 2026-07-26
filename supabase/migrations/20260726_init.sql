@@ -79,3 +79,8 @@ $$ language plpgsql security definer;
 create trigger on_movement_created
   after insert on public.movements
   for each row execute procedure public.update_product_stock();
+
+-- Otorgar permisos sobre tablas, secuencias y funciones a los roles de la API de Supabase
+grant all privileges on all tables in schema public to postgres, anon, authenticated, service_role;
+grant all privileges on all sequences in schema public to postgres, anon, authenticated, service_role;
+grant all privileges on all functions in schema public to postgres, anon, authenticated, service_role;
