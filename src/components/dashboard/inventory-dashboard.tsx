@@ -37,7 +37,8 @@ import {
   ClipboardList,
   Layers,
   Trash2,
-  Send
+  Send,
+  Smartphone
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
@@ -98,6 +99,15 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
   const [brandFilter, setBrandFilter] = useState('ALL')
   const [sorting, setSorting] = useState<SortingState>([])
   const [isPending, startTransition] = useTransition()
+
+  // Calculate totals
+  const totalCajas = useMemo(() => {
+    return products.reduce((sum, p) => sum + p.cajas, 0)
+  }, [products])
+
+  const totalEquipos = useMemo(() => {
+    return products.reduce((sum, p) => sum + p.cantidad, 0)
+  }, [products])
 
   // Shopping cart state (for Almacenista)
   const [cart, setCart] = useState<{ [productId: string]: number }>({})
@@ -633,6 +643,29 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
               <MovementDialog tipo="Salida" products={products.filter((p) => p.cajas > 0)} />
             </>
           )}
+        </div>
+      </div>
+
+      {/* Summary Metrics Cards */}
+      <div className="grid grid-cols-2 gap-3 max-w-md">
+        <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-3 flex items-center gap-3 backdrop-blur-sm">
+          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+            <Layers className="w-4.5 h-4.5" />
+          </div>
+          <div>
+            <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider block">Total Cajas</span>
+            <span className="text-base font-bold text-zinc-100 font-mono">{totalCajas} cajas</span>
+          </div>
+        </div>
+
+        <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-3 flex items-center gap-3 backdrop-blur-sm">
+          <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            <Smartphone className="w-4.5 h-4.5" />
+          </div>
+          <div>
+            <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider block">Total Equipos</span>
+            <span className="text-base font-bold text-zinc-100 font-mono">{totalEquipos} uds</span>
+          </div>
         </div>
       </div>
 
