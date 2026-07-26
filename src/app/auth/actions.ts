@@ -43,7 +43,7 @@ export async function login(state: unknown, formData: { username: string; passwo
     })
 
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+    return { success: true }
   }
 
   // --- Auth custom contra Supabase DB ---
@@ -82,7 +82,7 @@ export async function login(state: unknown, formData: { username: string; passwo
   })
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  return { success: true }
 }
 
 export async function signup(
@@ -136,7 +136,7 @@ export async function signup(
     })
 
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+    return { success: true }
   }
 
   // --- Auth custom contra Supabase DB ---
@@ -194,7 +194,7 @@ export async function signup(
   })
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  return { success: true }
 }
 
 export async function logout() {

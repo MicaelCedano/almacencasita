@@ -63,6 +63,8 @@ export default function LoginPage() {
       const res = await login(null, data)
       if (res && !res.success) {
         setErrorMessage(res.error || 'Credenciales incorrectas.')
+      } else if (res && res.success) {
+        window.location.href = '/dashboard'
       }
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Error al iniciar sesión.')
@@ -82,8 +84,9 @@ export default function LoginPage() {
         toast.info(res.message || 'Tu cuenta está pendiente de aprobación.')
         setErrorMessage(null)
         setActiveTab('login')
-      } else {
+      } else if (res && res.success) {
         toast.success('Cuenta creada exitosamente. Redirigiendo...')
+        window.location.href = '/dashboard'
       }
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Error al registrar la cuenta.')
