@@ -82,26 +82,26 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
       canvas.height = canvasHeight
 
       // Background
-      ctx.fillStyle = '#09090b' // zinc-950
+      ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, 500, canvasHeight)
 
       // Outer border
-      ctx.strokeStyle = '#18181b' // zinc-800
+      ctx.strokeStyle = '#e4e4e7'
       ctx.lineWidth = 4
       ctx.strokeRect(12, 12, 476, canvasHeight - 24)
 
       // Header
-      ctx.fillStyle = '#10b981' // emerald-500
+      ctx.fillStyle = '#0f172a'
       ctx.font = 'bold 24px Courier New'
       ctx.textAlign = 'center'
       ctx.fillText('ALMACEN CASITA', 250, 55)
 
-      ctx.fillStyle = '#a1a1aa' // zinc-400
+      ctx.fillStyle = '#4b5563'
       ctx.font = '13px Courier New'
       ctx.fillText('COMPROBANTE DE ENTREGA', 250, 80)
 
       // Divider
-      ctx.strokeStyle = '#27272a' // zinc-700
+      ctx.strokeStyle = '#d4d4d8'
       ctx.setLineDash([5, 5])
       ctx.beginPath()
       ctx.moveTo(30, 100)
@@ -111,7 +111,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
 
       // Metadata Info
       ctx.textAlign = 'left'
-      ctx.fillStyle = '#71717a'
+      ctx.fillStyle = '#4b5563'
       ctx.font = '12px Courier New'
       
       const dateText = new Date(selectedRequest.fecha).toLocaleDateString('es-ES', {
@@ -128,7 +128,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
       ctx.fillText(`ESTADO:  APROBADO E INVENTARIADO`, 40, 190)
 
       // Divider before items list
-      ctx.strokeStyle = '#27272a'
+      ctx.strokeStyle = '#d4d4d8'
       ctx.setLineDash([5, 5])
       ctx.beginPath()
       ctx.moveTo(30, 210)
@@ -138,13 +138,13 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
 
       // Draw Items Table Header
       let y = 235
-      ctx.fillStyle = '#a1a1aa'
+      ctx.fillStyle = '#1f2937'
       ctx.font = 'bold 12px Courier New'
       ctx.fillText('PRODUCTO (CODIGO)', 40, y)
       ctx.fillText('CANTIDAD', 370, y)
 
       y += 10
-      ctx.strokeStyle = '#27272a'
+      ctx.strokeStyle = '#d4d4d8'
       ctx.beginPath()
       ctx.moveTo(30, y)
       ctx.lineTo(470, y)
@@ -157,7 +157,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
       let totalUnits = 0
 
       for (const item of selectedRequest.items || []) {
-        ctx.fillStyle = '#f4f4f5'
+        ctx.fillStyle = '#0f172a'
         ctx.font = '12px Courier New'
 
         const name = `${item.nombre} (${item.capacidad} - ${item.color})`
@@ -171,7 +171,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
       }
 
       // Divider after items list
-      ctx.strokeStyle = '#27272a'
+      ctx.strokeStyle = '#d4d4d8'
       ctx.setLineDash([5, 5])
       ctx.beginPath()
       ctx.moveTo(30, y - 5)
@@ -181,27 +181,27 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
 
       // Draw totals
       y += 15
-      ctx.fillStyle = '#71717a'
+      ctx.fillStyle = '#4b5563'
       ctx.fillText('TOTAL CAJAS:', 40, y)
-      ctx.fillStyle = '#10b981'
+      ctx.fillStyle = '#047857'
       ctx.font = 'bold 13px Courier New'
       ctx.fillText(`${totalCajas} cajas`, 190, y)
 
       y += 20
-      ctx.fillStyle = '#71717a'
+      ctx.fillStyle = '#4b5563'
       ctx.font = '12px Courier New'
       ctx.fillText('TOTAL UDS:', 40, y)
-      ctx.fillStyle = '#f4f4f5'
+      ctx.fillStyle = '#0f172a'
       ctx.fillText(`${totalUnits} celulares`, 190, y)
 
       y += 35
       // barcode simulation
-      ctx.fillStyle = '#71717a'
+      ctx.fillStyle = '#4b5563'
       ctx.textAlign = 'center'
       ctx.font = '10px Courier New'
       ctx.fillText('*' + selectedRequest.id.toUpperCase() + '*', 250, y + 40)
       
-      ctx.fillStyle = '#f4f4f5'
+      ctx.fillStyle = '#1f2937'
       let startX = 135
       for (let i = 0; i < 35; i++) {
         const lineWidth = (Math.sin(i * 3.7) > 0) ? 5 : 2
@@ -479,7 +479,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
                 const isPendingReq = req.estado === 'Pendiente'
                 const totalCajas = req.items?.reduce((sum, i) => sum + i.cantidad, 0) || 0
                 return (
-                  <div key={req.id} className="bg-zinc-955 border border-zinc-800 rounded-xl p-4 space-y-3">
+                  <div key={req.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="text-[9px] font-mono text-zinc-500">
@@ -649,7 +649,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
           <div className="grid grid-cols-1 gap-4 md:hidden">
             {pendingUsers.length > 0 ? (
               pendingUsers.map((usr) => (
-                <div key={usr.id} className="bg-zinc-955 border border-zinc-800 rounded-xl p-4 space-y-3">
+                <div key={usr.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-sm font-bold text-zinc-200">{usr.fullName}</h4>
@@ -779,7 +779,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
           <div className="grid grid-cols-1 gap-4 md:hidden">
             {allUsers.length > 0 ? (
               allUsers.map((usr) => (
-                <div key={usr.id} className="bg-zinc-955 border border-zinc-800 rounded-xl p-4 space-y-3">
+                <div key={usr.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-sm font-bold text-zinc-200">{usr.fullName}</h4>
@@ -884,7 +884,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
 
       {/* Voucher Drawer Modal */}
       <Dialog open={voucherOpen} onOpenChange={setVoucherOpen}>
-        <DialogContent className="bg-zinc-950 border-zinc-900 text-zinc-100 max-w-sm flex flex-col items-center">
+        <DialogContent className="bg-zinc-900 border border-zinc-800 text-zinc-100 max-w-sm flex flex-col items-center shadow-2xl relative z-50 animate-in fade-in zoom-in duration-200">
           <DialogHeader className="w-full text-center">
             <DialogTitle className="text-zinc-200">Vale de Entrega Generado</DialogTitle>
             <DialogDescription className="text-zinc-400 text-xs">
