@@ -1,0 +1,104 @@
+import React from 'react'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import ProductList from '@/components/dashboard/product-list'
+import { NewProductDialog } from '@/components/dashboard/new-product-dialog'
+import { cookies } from 'next/headers'
+import { isSupabaseConfigured, readLocalDB } from '@/lib/db'
+import { Smartphone } from 'lucide-react'
+
+interface ProductRow {
+  id: string;
+  codigo: string;
+  nombre: string;
+  marca: string;
+  color: string;
+  capacidad: string;
+  descripcion?: string;
+  cajas: number;
+  unidades_por_caja: number;
+  cantidad: number;
+  fecha_creacion: string;
+}
+
+export const dynamic = 'force-dynamic'
+
+export default async function ProductosPage() {
+  const isLocal = !isSupabaseConfigured()
+  let role: 'admin' | 'empleado' = 'empleado'
+
+  if (isLocal) {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get('local_session_user')
+    if (!sessionCookie) redirect('/login')
+    const user = JSON.parse(sessionCookie.value)
+    role = user.role
+  } else {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) redirect('/login')
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    if (profile) role = profile.role as 'admin' | 'empleado'
+  }
+
+  // Only admins can access this page
+  if (role !== 'admin') {
+    redirect('/dashboard')
+  }
+
+  let products: ProductRow[] = []
+  if (isLocal) {
+    const db = readLocalDB()
+    products = db.products.map((p) => ({
+      id: p.id,
+      codigo: p.codigo,
+      nombre: p.nombre,
+      marca: p.marca,
+      color: p.color,
+      capacidad: p.capacidad,
+      descripcion: p.descripcion,
+      cajas: p.cajas,
+      unidades_por_caja: p.unidades_por_caja,
+      cantidad: p.cantidad,
+      fecha_creacion: p.fecha_creacion
+    }))
+  } else {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, codigo, nombre, marca, color, capacidad, descripcion, cajas, unidades_por_caja, cantidad, fecha_creacion')
+      .order('codigo', { ascending: true })
+    if (error) {
+      console.error('Error fetching catalog products:', error)
+    }
+    if (data) products = data as unknown as ProductRow[]
+  }
+
+  // Sort products by code ascending
+  const sortedProducts = [...products].sort((a, b) => a.codigo.localeCompare(b.codigo))
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
+            <Smartphone className="w-6 h-6 text-emerald-400" />
+            <span>Catálogo de Productos</span>
+          </h1>
+          <p className="text-sm text-zinc-400">
+            Crea, visualiza y elimina variantes de celulares (por modelo, marca, color y capacidad).
+          </p>
+        </div>
+
+        <NewProductDialog />
+      </div>
+
+      <ProductList products={sortedProducts} />
+    </div>
+  )
+}
