@@ -1291,7 +1291,7 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
 
       {/* Voucher Drawer Modal (For both Admin & Almacenistas) */}
       <Dialog open={voucherOpen} onOpenChange={setVoucherOpen}>
-        <DialogContent className="bg-zinc-900 border border-zinc-800 text-zinc-100 max-w-sm flex flex-col items-center shadow-2xl relative z-50 animate-in fade-in zoom-in duration-200">
+        <DialogContent className="bg-zinc-900 border border-zinc-800 text-zinc-100 max-w-sm flex flex-col items-center shadow-2xl z-50 animate-in fade-in zoom-in duration-200">
           <DialogHeader className="w-full text-center">
             <DialogTitle className="text-zinc-200">Comprobante de Entrega</DialogTitle>
             <DialogDescription className="text-zinc-400 text-xs">
