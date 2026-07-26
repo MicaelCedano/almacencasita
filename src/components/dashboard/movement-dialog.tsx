@@ -15,7 +15,7 @@ import { toast } from 'sonner'
 const movementSchema = z.object({
   producto_id: z.string().min(1, { message: 'Debes seleccionar un producto' }),
   cantidad: z.coerce.number().int().min(1, { message: 'La cantidad debe ser mayor o igual a 1 caja' }),
-  motivo: z.string().min(3, { message: 'Debes ingresar un motivo' }),
+  motivo: z.string().optional(),
 })
 
 type MovementFormValues = z.infer<typeof movementSchema>
@@ -92,7 +92,7 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
         producto_id: data.producto_id,
         cantidad: data.cantidad, // quantity of boxes
         tipo,
-        motivo: data.motivo,
+        motivo: data.motivo?.trim() || 'Sin descripción',
       })
 
       if (res.success) {
@@ -243,7 +243,7 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
 
           {/* Reason (Motivo) */}
           <div className="space-y-2">
-            <Label htmlFor="motivo">Motivo / Descripción</Label>
+            <Label htmlFor="motivo">Motivo / Descripción (Opcional)</Label>
             <Input
               id="motivo"
               placeholder={tipo === 'Entrada' ? 'Abastecimiento de lote, compra factura #...' : 'Venta a cliente, despacho local...'}

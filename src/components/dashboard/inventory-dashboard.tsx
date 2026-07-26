@@ -374,10 +374,6 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
   // Submit Cart exit request (Almacenista)
   const handleCartSubmit = () => {
     if (Object.keys(cart).length === 0) return
-    if (!motivo.trim()) {
-      toast.error('Debes ingresar un motivo para realizar la solicitud.')
-      return
-    }
 
     startTransition(async () => {
       const items = Object.entries(cart).map(([producto_id, cantidad]) => ({
@@ -387,7 +383,7 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
 
       const res = await createWithdrawalRequest({
         items,
-        motivo: motivo.trim()
+        motivo: motivo.trim() || 'Sin descripción'
       })
 
       if (res.success) {
@@ -1255,7 +1251,7 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
 
             {/* Motivo Input */}
             <div className="space-y-2">
-              <Label htmlFor="submit-motivo">Motivo / Descripción de la Salida</Label>
+              <Label htmlFor="submit-motivo">Motivo / Descripción de la Salida (Opcional)</Label>
               <Input
                 id="submit-motivo"
                 placeholder="Venta a cliente, reposición de tienda, despacho..."
