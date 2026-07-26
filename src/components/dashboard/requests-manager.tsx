@@ -81,26 +81,26 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     canvas.height = canvasHeight
 
     // Background
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = '#09090b'
     ctx.fillRect(0, 0, 500, canvasHeight)
 
     // Outer border
-    ctx.strokeStyle = '#e4e4e7'
+    ctx.strokeStyle = '#27272a'
     ctx.lineWidth = 4
     ctx.strokeRect(12, 12, 476, canvasHeight - 24)
 
     // Header
-    ctx.fillStyle = '#0f172a'
+    ctx.fillStyle = '#10b981'
     ctx.font = 'bold 24px Courier New'
     ctx.textAlign = 'center'
     ctx.fillText('ALMACEN CASITA', 250, 55)
 
-    ctx.fillStyle = '#4b5563'
+    ctx.fillStyle = '#94a3b8'
     ctx.font = '13px Courier New'
     ctx.fillText('COMPROBANTE DE ENTREGA', 250, 80)
 
     // Divider
-    ctx.strokeStyle = '#d4d4d8'
+    ctx.strokeStyle = '#3f3f46'
     ctx.setLineDash([5, 5])
     ctx.beginPath()
     ctx.moveTo(30, 100)
@@ -110,7 +110,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
 
     // Metadata Info
     ctx.textAlign = 'left'
-    ctx.fillStyle = '#4b5563'
+    ctx.fillStyle = '#94a3b8'
     ctx.font = '12px Courier New'
     
     const dateText = new Date(selectedRequest.fecha).toLocaleDateString('es-ES', {
@@ -121,13 +121,22 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
       minute: '2-digit'
     })
 
-    ctx.fillText(`ID VALE: ${selectedRequest.id.toUpperCase()}`, 40, 130)
-    ctx.fillText(`FECHA:   ${dateText}`, 40, 150)
-    ctx.fillText(`ENTREGA: ${selectedRequest.requesterName}`, 40, 170)
-    ctx.fillText(`ESTADO:  APROBADO E INVENTARIADO`, 40, 190)
+    // Labels in gray, values in pure white for maximum legibility
+    ctx.fillText('ID VALE: ', 40, 130)
+    ctx.fillText('FECHA:   ', 40, 150)
+    ctx.fillText('ENTREGA: ', 40, 170)
+    ctx.fillText('ESTADO:  ', 40, 190)
+
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(selectedRequest.id.toUpperCase(), 130, 130)
+    ctx.fillText(dateText, 130, 150)
+    ctx.fillText(selectedRequest.requesterName, 130, 170)
+    
+    ctx.fillStyle = '#34d399' // status in light emerald
+    ctx.fillText('APROBADO E INVENTARIADO', 130, 190)
 
     // Divider before items list
-    ctx.strokeStyle = '#d4d4d8'
+    ctx.strokeStyle = '#3f3f46'
     ctx.setLineDash([5, 5])
     ctx.beginPath()
     ctx.moveTo(30, 210)
@@ -137,13 +146,13 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
 
     // Draw Items Table Header
     let y = 235
-    ctx.fillStyle = '#1f2937'
+    ctx.fillStyle = '#cbd5e1'
     ctx.font = 'bold 12px Courier New'
     ctx.fillText('PRODUCTO (CODIGO)', 40, y)
     ctx.fillText('CANTIDAD', 370, y)
 
     y += 10
-    ctx.strokeStyle = '#d4d4d8'
+    ctx.strokeStyle = '#3f3f46'
     ctx.beginPath()
     ctx.moveTo(30, y)
     ctx.lineTo(470, y)
@@ -156,12 +165,14 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     let totalUnits = 0
 
     for (const item of selectedRequest.items || []) {
-      ctx.fillStyle = '#0f172a'
+      ctx.fillStyle = '#ffffff' // Pure white text
       ctx.font = '12px Courier New'
 
       const name = `${item.nombre} (${item.capacidad} - ${item.color})`
       const descText = `[${item.codigo}] ${name.substring(0, 26)}`
       ctx.fillText(descText, 40, y)
+      
+      ctx.fillStyle = '#34d399' // highlight count in emerald
       ctx.fillText(`${item.cantidad} cajas`, 370, y)
 
       totalCajas += item.cantidad
@@ -170,7 +181,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     }
 
     // Divider after items list
-    ctx.strokeStyle = '#d4d4d8'
+    ctx.strokeStyle = '#3f3f46'
     ctx.setLineDash([5, 5])
     ctx.beginPath()
     ctx.moveTo(30, y - 5)
@@ -180,27 +191,27 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
 
     // Draw totals
     y += 15
-    ctx.fillStyle = '#4b5563'
+    ctx.fillStyle = '#94a3b8'
     ctx.fillText('TOTAL CAJAS:', 40, y)
-    ctx.fillStyle = '#047857'
+    ctx.fillStyle = '#10b981'
     ctx.font = 'bold 13px Courier New'
     ctx.fillText(`${totalCajas} cajas`, 190, y)
 
     y += 20
-    ctx.fillStyle = '#4b5563'
+    ctx.fillStyle = '#94a3b8'
     ctx.font = '12px Courier New'
     ctx.fillText('TOTAL UDS:', 40, y)
-    ctx.fillStyle = '#0f172a'
+    ctx.fillStyle = '#ffffff'
     ctx.fillText(`${totalUnits} celulares`, 190, y)
 
     y += 35
     // barcode simulation
-    ctx.fillStyle = '#4b5563'
+    ctx.fillStyle = '#94a3b8'
     ctx.textAlign = 'center'
     ctx.font = '10px Courier New'
     ctx.fillText('*' + selectedRequest.id.toUpperCase() + '*', 250, y + 40)
     
-    ctx.fillStyle = '#1f2937'
+    ctx.fillStyle = '#ffffff'
     let startX = 135
     for (let i = 0; i < 35; i++) {
       const lineWidth = (Math.sin(i * 3.7) > 0) ? 5 : 2
