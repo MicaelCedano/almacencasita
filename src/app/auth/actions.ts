@@ -8,7 +8,7 @@ import { isSupabaseConfigured, readLocalDB, writeLocalDB } from '@/lib/db'
 
 // Helper to convert username to virtual email (for Supabase mode)
 function getVirtualEmail(username: string): string {
-  return `${username.trim().toLowerCase()}@almacencasita.local`
+  return `${username.trim().toLowerCase()}@almacencasita.test`
 }
 
 export async function login(state: unknown, formData: { username: string; password?: string }) {
