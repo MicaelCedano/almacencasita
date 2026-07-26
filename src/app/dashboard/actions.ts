@@ -542,3 +542,38 @@ export async function rejectWithdrawalRequest(requestId: string) {
   revalidatePath('/dashboard/solicitudes')
   return { success: true }
 }
+
+export async function updateUserPassword(userId: string, newPassword: string) {
+  const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden cambiar claves.' }
+
+  if (isLocal) {
+    const db = readLocalDB()
+    const targetUser = db.users.find((u) => u.id === userId)
+    if (!targetUser) return { success: false, error: 'Usuario no encontrado.' }
+
+    targetUser.password = newPassword.trim()
+    writeLocalDB(db)
+
+    revalidatePath('/dashboard/solicitudes')
+    return { success: true }
+  }
+
+  // --- Supabase DB ---
+  const supabase = await createClient()
+  const crypto = require('crypto')
+  const newHash = crypto.createHash('sha256').update(newPassword.trim()).digest('hex')
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ password_hash: newHash })
+    .eq('id', userId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/dashboard/solicitudes')
+  return { success: true }
+}

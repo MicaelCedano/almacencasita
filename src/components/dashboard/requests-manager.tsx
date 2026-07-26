@@ -1,13 +1,20 @@
 'use client'
 
 import React, { useState, useTransition, useEffect, useRef } from 'react'
-import { approveUser, deleteUser, approveWithdrawalRequest, rejectWithdrawalRequest } from '@/app/dashboard/actions'
+import { 
+  approveUser, 
+  deleteUser, 
+  approveWithdrawalRequest, 
+  rejectWithdrawalRequest,
+  updateUserPassword 
+} from '@/app/dashboard/actions'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Check, X, FileText, MessageSquare, Download, ClipboardList } from 'lucide-react'
+import { Check, X, FileText, MessageSquare, Download, ClipboardList, Key, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 interface RequestItemDetails {
   producto_id: string;
@@ -41,16 +48,22 @@ interface UserRecord {
 interface RequestsManagerProps {
   requests: RequestRecord[];
   pendingUsers: UserRecord[];
+  allUsers?: UserRecord[];
 }
 
-export default function RequestsManager({ requests, pendingUsers }: RequestsManagerProps) {
-  const [activeTab, setActiveTab] = useState<'exits' | 'users'>('exits')
+export default function RequestsManager({ requests, pendingUsers, allUsers = [] }: RequestsManagerProps) {
+  const [activeTab, setActiveTab] = useState<'exits' | 'users' | 'all-users'>('exits')
   const [isPending, startTransition] = useTransition()
 
   // Voucher modal states
   const [voucherOpen, setVoucherOpen] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState<RequestRecord | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Password reset modal states
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [selectedUserForPassword, setSelectedUserForPassword] = useState<UserRecord | null>(null)
+  const [newPassword, setNewPassword] = useState('')
 
   // Draw voucher helper
   useEffect(() => {
@@ -60,7 +73,6 @@ export default function RequestsManager({ requests, pendingUsers }: RequestsMana
       if (!ctx) return
 
       const itemsCount = selectedRequest.items?.length || 0
-      // Calculate dynamic height based on the number of products
       const baseHeight = 360
       const itemsHeight = itemsCount * 22
       const canvasHeight = baseHeight + itemsHeight
@@ -258,7 +270,7 @@ export default function RequestsManager({ requests, pendingUsers }: RequestsMana
   const handleUserReject = (userId: string) => {
     startTransition(async () => {
       const res = await deleteUser(userId)
-      if (res.success) toast.success('Solicitud rechazada y usuario eliminado.')
+      if (res.success) toast.success('Usuario eliminado/rechazado.')
       else toast.error(res.error || 'Error al procesar.')
     })
   }
@@ -287,13 +299,34 @@ export default function RequestsManager({ requests, pendingUsers }: RequestsMana
     })
   }
 
+  // Handle password modification submit
+  const handlePasswordChangeSubmit = () => {
+    if (!selectedUserForPassword) return
+    if (!newPassword.trim() || newPassword.trim().length < 4) {
+      toast.error('La contraseña debe tener al menos 4 caracteres.')
+      return
+    }
+
+    startTransition(async () => {
+      const res = await updateUserPassword(selectedUserForPassword.id, newPassword)
+      if (res.success) {
+        toast.success(`Contraseña de @${selectedUserForPassword.username} modificada con éxito.`)
+        setNewPassword('')
+        setPasswordModalOpen(false)
+        setSelectedUserForPassword(null)
+      } else {
+        toast.error(res.error || 'Error al actualizar contraseña.')
+      }
+    })
+  }
+
   return (
     <div className="space-y-6">
       {/* Tabs */}
-      <div className="flex border-b border-zinc-800 max-w-sm">
+      <div className="flex border-b border-zinc-800 max-w-lg overflow-x-auto">
         <button
           onClick={() => setActiveTab('exits')}
-          className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors ${
+          className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap px-4 ${
             activeTab === 'exits'
               ? 'border-emerald-500 text-zinc-100'
               : 'border-transparent text-zinc-500 hover:text-zinc-300'
@@ -303,13 +336,23 @@ export default function RequestsManager({ requests, pendingUsers }: RequestsMana
         </button>
         <button
           onClick={() => setActiveTab('users')}
-          className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors ${
+          className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap px-4 ${
             activeTab === 'users'
               ? 'border-emerald-500 text-zinc-100'
               : 'border-transparent text-zinc-500 hover:text-zinc-300'
           }`}
         >
           Accesos Pendientes ({pendingUsers.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('all-users')}
+          className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap px-4 ${
+            activeTab === 'all-users'
+              ? 'border-emerald-500 text-zinc-100'
+              : 'border-transparent text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          Usuarios Activos ({allUsers.length})
         </button>
       </div>
 
@@ -480,7 +523,7 @@ export default function RequestsManager({ requests, pendingUsers }: RequestsMana
 
                     {req.motivo && (
                       <div className="text-[10px] text-zinc-400 flex items-start gap-1">
-                        <ClipboardList className="w-3.5 h-3.5 text-zinc-600 shrink-0 mt-0.5" />
+                        <ClipboardList className="w-3.5 h-3.5 text-zinc-650 shrink-0 mt-0.5" />
                         <span>Motivo: {req.motivo}</span>
                       </div>
                     )}
@@ -606,7 +649,7 @@ export default function RequestsManager({ requests, pendingUsers }: RequestsMana
           <div className="grid grid-cols-1 gap-4 md:hidden">
             {pendingUsers.length > 0 ? (
               pendingUsers.map((usr) => (
-                <div key={usr.id} className="bg-zinc-950/40 border border-zinc-800 rounded-xl p-4 space-y-3">
+                <div key={usr.id} className="bg-zinc-955 border border-zinc-800 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-sm font-bold text-zinc-200">{usr.fullName}</h4>
@@ -646,6 +689,198 @@ export default function RequestsManager({ requests, pendingUsers }: RequestsMana
           </div>
         </div>
       )}
+
+      {/* Tab 3: All Users Management (Active Users & Passwords resetting) */}
+      {activeTab === 'all-users' && (
+        <div className="space-y-4">
+          
+          {/* Desktop Table View */}
+          <div className="hidden md:block rounded-lg border border-zinc-800 bg-zinc-950/40 overflow-hidden">
+            <Table>
+              <TableHeader className="bg-zinc-950/80">
+                <TableRow className="border-b border-zinc-800 hover:bg-transparent">
+                  <TableHead className="text-zinc-400 py-3 text-xs">Nombre Completo</TableHead>
+                  <TableHead className="text-zinc-400 py-3 text-xs">Nombre de Usuario</TableHead>
+                  <TableHead className="text-zinc-400 py-3 text-xs">Rol</TableHead>
+                  <TableHead className="text-zinc-400 py-3 text-xs">Acceso Aprobado</TableHead>
+                  <TableHead className="text-zinc-400 py-3 text-xs text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allUsers.length > 0 ? (
+                  allUsers.map((usr) => (
+                    <TableRow key={usr.id} className="border-b border-zinc-800 hover:bg-zinc-900/20 transition-colors">
+                      <TableCell className="py-4 text-xs font-semibold text-zinc-200">
+                        {usr.fullName}
+                      </TableCell>
+                      <TableCell className="py-4 text-xs font-mono text-zinc-400">
+                        @{usr.username}
+                      </TableCell>
+                      <TableCell className="py-4 text-xs">
+                        <Badge 
+                          variant="outline" 
+                          className={`uppercase text-[8px] font-bold ${
+                            usr.role === 'admin' 
+                              ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400' 
+                              : 'border-zinc-800 bg-zinc-900/50 text-zinc-300'
+                          }`}
+                        >
+                          {usr.role === 'admin' ? 'Admin' : 'Almacenista'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-4 text-xs">
+                        <Badge 
+                          variant="outline" 
+                          className={`text-[9px] ${
+                            usr.approved 
+                              ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400' 
+                              : 'border-amber-500/20 bg-amber-500/5 text-amber-400'
+                          }`}
+                        >
+                          {usr.approved ? 'Aprobado' : 'Pendiente'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-4 text-xs text-right whitespace-nowrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedUserForPassword(usr)
+                            setPasswordModalOpen(true)
+                          }}
+                          className="border-zinc-850 text-zinc-200 hover:text-emerald-400 hover:bg-emerald-500/5 h-8 px-2.5 mr-1"
+                        >
+                          <Key className="w-3.5 h-3.5 mr-1" /> Clave
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={isPending}
+                          onClick={() => handleUserReject(usr.id)}
+                          className="border-zinc-850 text-red-400 hover:text-red-300 hover:bg-red-500/5 h-8 px-2.5"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-1" /> Eliminar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-32 text-center text-zinc-500">
+                      No hay usuarios registrados.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Card list */}
+          <div className="grid grid-cols-1 gap-4 md:hidden">
+            {allUsers.length > 0 ? (
+              allUsers.map((usr) => (
+                <div key={usr.id} className="bg-zinc-955 border border-zinc-800 rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-sm font-bold text-zinc-200">{usr.fullName}</h4>
+                      <span className="text-[10px] font-mono text-zinc-500">@{usr.username}</span>
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={`text-[9px] ${
+                        usr.approved 
+                          ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400' 
+                          : 'border-amber-500/20 bg-amber-500/5 text-amber-400'
+                      }`}
+                    >
+                      {usr.approved ? 'Aprobado' : 'Pendiente'}
+                    </Badge>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs font-mono py-1 border-t border-zinc-900/60">
+                    <span className="text-zinc-500">Rol asignado:</span>
+                    <span className="text-zinc-300 font-bold uppercase text-[10px]">{usr.role === 'admin' ? 'Administrador' : 'Almacenista'}</span>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedUserForPassword(usr)
+                        setPasswordModalOpen(true)
+                      }}
+                      className="border-zinc-850 text-zinc-200 hover:text-emerald-400 hover:bg-emerald-500/5 h-9 px-3 flex-1 justify-center"
+                    >
+                      <Key className="w-3.5 h-3.5 mr-1" /> Cambiar Clave
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isPending}
+                      onClick={() => handleUserReject(usr.id)}
+                      className="border-zinc-850 text-red-400 hover:text-red-300 hover:bg-red-500/5 h-9 px-3 flex-1 justify-center"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Eliminar
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center text-zinc-500 border border-zinc-800 bg-zinc-950/40 rounded-xl text-xs">
+                No hay usuarios registrados.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Dialog Modal */}
+      <Dialog open={passwordModalOpen} onOpenChange={setPasswordModalOpen}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-200">Modificar Contraseña</DialogTitle>
+            <DialogDescription className="text-zinc-400 text-xs">
+              Escribe la nueva contraseña para el usuario <span className="font-bold text-zinc-300">@{selectedUserForPassword?.username}</span>. Mínimo 4 caracteres.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider block">Nueva Contraseña</label>
+              <Input
+                type="password"
+                placeholder="Escribe la clave de al menos 4 dígitos..."
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="bg-zinc-950 border-zinc-850 focus:border-emerald-500 text-xs h-10 text-zinc-100"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="pt-3 border-t border-zinc-950/80">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setNewPassword('')
+                setPasswordModalOpen(false)
+              }}
+              className="border-zinc-850 text-zinc-350 hover:bg-zinc-950 hover:text-zinc-200 h-9"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={handlePasswordChangeSubmit}
+              className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-bold h-9"
+            >
+              {isPending ? 'Guardando...' : 'Guardar Clave'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Voucher Drawer Modal */}
       <Dialog open={voucherOpen} onOpenChange={setVoucherOpen}>

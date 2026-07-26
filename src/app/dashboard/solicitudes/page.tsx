@@ -39,20 +39,38 @@ export const dynamic = 'force-dynamic'
 
 export default async function SolicitudesPage() {
   const isLocal = !isSupabaseConfigured()
-  const cookieStore = await cookies()
-  const sessionCookie = cookieStore.get('local_session_user')
-  if (!sessionCookie) redirect('/login')
-  const user = JSON.parse(sessionCookie.value)
-  if (user.role !== 'admin') redirect('/dashboard')
+  let role: 'admin' | 'empleado' = 'empleado'
+
+  if (isLocal) {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get('local_session_user')
+    if (!sessionCookie) redirect('/login')
+    const user = JSON.parse(sessionCookie.value)
+    role = user.role
+  } else {
+    const supabase = await createClient()
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get('local_session_user')
+    if (!sessionCookie) redirect('/login')
+    const user = JSON.parse(sessionCookie.value)
+    role = user.role
+  }
+
+  // Admins only
+  if (role !== 'admin') {
+    redirect('/dashboard')
+  }
 
   let requests: RequestRecord[] = []
   let pendingUsers: UserRecord[] = []
+  let allUsers: UserRecord[] = []
 
   if (isLocal) {
     const db = readLocalDB()
     
+    // Map requests
     requests = (db.requests || []).map((r) => {
-      const reqUser = db.users.find((u) => u.id === r.usuario_id)
+      const user = db.users.find((u) => u.id === r.usuario_id)
       const mappedItems = (r.items || []).map((item) => {
         const product = db.products.find((p) => p.id === item.producto_id)
         return {
@@ -74,38 +92,42 @@ export default async function SolicitudesPage() {
         estado: r.estado,
         fecha: r.fecha,
         items: mappedItems,
-        requesterName: reqUser ? reqUser.fullName : 'Almacenista'
+        requesterName: user ? user.fullName : 'Almacenista'
       } as RequestRecord
     })
 
+    // Sort requests by date descending
     requests.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 
-    pendingUsers = db.users
-      .filter((u) => !u.approved)
-      .map((u) => ({
-        id: u.id,
-        username: u.username,
-        fullName: u.fullName,
-        role: u.role,
-        approved: u.approved
-      }))
+    // Fetch all users and pending ones
+    allUsers = db.users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      fullName: u.fullName,
+      role: u.role,
+      approved: u.approved
+    }))
+
+    pendingUsers = allUsers.filter((u) => !u.approved)
   } else {
     const supabase = await createClient()
     
-    // Fetch pending users
+    // Fetch all users
     const { data: usersData } = await supabase
       .from('profiles')
       .select('id, username, full_name, role, approved')
-      .eq('approved', false)
+      .order('full_name', { ascending: true })
 
     if (usersData) {
-      pendingUsers = usersData.map((u) => ({
+      allUsers = usersData.map((u) => ({
         id: u.id,
-        username: u.username,
+        username: u.username || '',
         fullName: u.full_name,
         role: u.role as 'admin' | 'empleado',
         approved: u.approved
       }))
+
+      pendingUsers = allUsers.filter((u) => !u.approved)
     }
 
     // Fetch requests
@@ -125,6 +147,7 @@ export default async function SolicitudesPage() {
       .order('fecha', { ascending: false })
 
     if (requestsData) {
+      // Fetch all products to match details on server
       const { data: allProducts } = await supabase
         .from('products')
         .select('id, codigo, nombre, color, capacidad, unidades_por_caja, marca')
@@ -138,7 +161,9 @@ export default async function SolicitudesPage() {
         estado: 'Pendiente' | 'Aprobado' | 'Rechazado';
         fecha: string;
         items: { producto_id: string; cantidad: number }[];
-        profiles: { full_name: string } | null;
+        profiles: {
+          full_name: string;
+        } | null;
       }[]).map((r) => {
         const mappedItems = r.items.map((item) => {
           const product = productMap.get(item.producto_id)
@@ -175,11 +200,15 @@ export default async function SolicitudesPage() {
           <span>Solicitudes y Aprobaciones</span>
         </h1>
         <p className="text-sm text-zinc-400">
-          Autoriza el registro de nuevos almacenistas o aprueba las solicitudes de retiro de cajas de celulares del inventario.
+          Autoriza el acceso de almacenistas, gestiona los usuarios activos o aprueba solicitudes de retiro de cajas.
         </p>
       </div>
 
-      <RequestsManager requests={requests} pendingUsers={pendingUsers} />
+      <RequestsManager 
+        requests={requests} 
+        pendingUsers={pendingUsers} 
+        allUsers={allUsers}
+      />
     </div>
   )
 }
