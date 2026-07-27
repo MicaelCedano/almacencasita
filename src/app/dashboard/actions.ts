@@ -577,3 +577,98 @@ export async function updateUserPassword(userId: string, newPassword: string) {
   revalidatePath('/dashboard/solicitudes')
   return { success: true }
 }
+
+export async function createProductsBulk(productsList: {
+  codigo: string;
+  nombre: string;
+  marca: string;
+  color: string;
+  capacidad: string;
+  descripcion?: string;
+  unidades_por_caja: number;
+}[]) {
+  const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado.' }
+
+  // Validate
+  for (const p of productsList) {
+    if (!p.codigo || !p.nombre || !p.marca || !p.color || !p.capacidad) {
+      return { success: false, error: 'Datos de productos incompletos.' }
+    }
+  }
+
+  if (isLocal) {
+    const db = readLocalDB()
+    const existingCodigos = new Set(db.products.map((prod) => prod.codigo.toUpperCase()))
+    const newProducts = []
+
+    for (const p of productsList) {
+      const cleanCodigo = p.codigo.trim().toUpperCase()
+      if (existingCodigos.has(cleanCodigo)) continue
+
+      newProducts.push({
+        id: 'prod_' + Math.random().toString(36).substr(2, 9),
+        codigo: cleanCodigo,
+        nombre: p.nombre.trim(),
+        marca: p.marca.trim(),
+        color: p.color.trim(),
+        capacidad: p.capacidad.trim(),
+        descripcion: p.descripcion?.trim() || '',
+        cajas: 0,
+        unidades_por_caja: p.unidades_por_caja || 20,
+        cantidad: 0,
+        fecha_creacion: new Date().toISOString(),
+        fecha_actualizacion: new Date().toISOString()
+      })
+      existingCodigos.add(cleanCodigo)
+    }
+
+    db.products.push(...newProducts)
+    writeLocalDB(db)
+
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/productos')
+    return { success: true, count: newProducts.length }
+  }
+
+  // --- Supabase DB ---
+  const supabase = await createClient()
+  const rows = productsList.map((p) => ({
+    codigo: p.codigo.trim().toUpperCase(),
+    nombre: p.nombre.trim(),
+    marca: p.marca.trim(),
+    color: p.color.trim(),
+    capacidad: p.capacidad.trim(),
+    descripcion: p.descripcion?.trim() || '',
+    cajas: 0,
+    unidades_por_caja: p.unidades_por_caja || 20,
+    cantidad: 0
+  }))
+
+  // Filter local duplicates
+  const codigosToInsert = rows.map((r) => r.codigo)
+  const { data: existing } = await supabase
+    .from('products')
+    .select('codigo')
+    .in('codigo', codigosToInsert)
+
+  const existingSet = new Set(existing?.map((e) => e.codigo.toUpperCase()) || [])
+  const filteredRows = rows.filter((r) => !existingSet.has(r.codigo))
+
+  if (filteredRows.length === 0) {
+    return { success: true, count: 0, message: 'Todos los productos ya existían en la base de datos.' }
+  }
+
+  const { error } = await supabase
+    .from('products')
+    .insert(filteredRows)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/dashboard/productos')
+  return { success: true, count: filteredRows.length }
+}

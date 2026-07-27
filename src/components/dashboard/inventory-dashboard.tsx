@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { NewProductDialog } from '@/components/dashboard/new-product-dialog'
+import { BulkImportDialog } from '@/components/dashboard/bulk-import-dialog'
 import { MovementDialog } from '@/components/dashboard/movement-dialog'
 import { approveWithdrawalRequest, rejectWithdrawalRequest, createWithdrawalRequest } from '@/app/dashboard/actions'
 import { 
@@ -651,6 +652,7 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
         <div className="flex flex-wrap items-center gap-2">
           {role === 'admin' && (
             <>
+              <BulkImportDialog />
               <NewProductDialog />
               <MovementDialog tipo="Entrada" products={products} />
               <MovementDialog tipo="Salida" products={products.filter((p) => p.cajas > 0)} />

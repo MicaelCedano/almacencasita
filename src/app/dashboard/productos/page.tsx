@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ProductList from '@/components/dashboard/product-list'
 import { NewProductDialog } from '@/components/dashboard/new-product-dialog'
+import { BulkImportDialog } from '@/components/dashboard/bulk-import-dialog'
 import { cookies } from 'next/headers'
 import { isSupabaseConfigured, readLocalDB } from '@/lib/db'
 import { Smartphone } from 'lucide-react'
@@ -75,7 +76,10 @@ export default async function ProductosPage() {
           </p>
         </div>
 
-        <NewProductDialog />
+        <div className="flex items-center gap-2">
+          <BulkImportDialog />
+          <NewProductDialog />
+        </div>
       </div>
 
       <ProductList products={sortedProducts} />
