@@ -118,7 +118,7 @@ export function VoucherButton({ movement, variant = 'ghost', className, children
     ctx.fillStyle = '#cbd5e1'
     ctx.font = 'bold 12px Courier New'
     ctx.fillText('PRODUCTO (CODIGO)', 40, y)
-    ctx.fillText('CANTIDAD', 400, y)
+    ctx.fillText('CANTIDAD', 420, y)
 
     y += 10
     ctx.strokeStyle = '#3f3f46'
@@ -133,15 +133,15 @@ export function VoucherButton({ movement, variant = 'ghost', className, children
     const prod = movement.products
     if (prod) {
       ctx.fillStyle = '#ffffff'
-      ctx.font = '11px Courier New'
+      ctx.font = '10px Courier New'
 
       const name = `${prod.nombre} (${prod.capacidad} - ${prod.color})`
       const fullText = `[${prod.codigo}] ${name}`
-      const descText = fullText.length > 53 ? fullText.substring(0, 50) + '...' : fullText
+      const descText = fullText.length > 60 ? fullText.substring(0, 57) + '...' : fullText
       ctx.fillText(descText, 40, y)
       
       ctx.fillStyle = isEntrada ? '#34d399' : '#fb7185'
-      ctx.fillText(`${movement.cantidad} cajas`, 400, y)
+      ctx.fillText(`${movement.cantidad} cajas`, 420, y)
     } else {
       ctx.fillStyle = '#ef4444'
       ctx.fillText('Producto eliminado o no disponible', 40, y)

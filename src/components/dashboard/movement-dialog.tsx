@@ -161,7 +161,7 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
     ctx.fillStyle = '#cbd5e1'
     ctx.font = 'bold 12px Courier New'
     ctx.fillText('PRODUCTO (CODIGO)', 40, y)
-    ctx.fillText('CANTIDAD', 400, y)
+    ctx.fillText('CANTIDAD', 420, y)
 
     y += 10
     ctx.strokeStyle = '#3f3f46'
@@ -178,15 +178,15 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
 
     for (const item of createdMovement.items || []) {
       ctx.fillStyle = '#ffffff'
-      ctx.font = '11px Courier New'
+      ctx.font = '10px Courier New'
 
       const name = `${item.nombre} (${item.capacidad} - ${item.color})`
       const fullText = `[${item.codigo}] ${name}`
-      const descText = fullText.length > 53 ? fullText.substring(0, 50) + '...' : fullText
+      const descText = fullText.length > 60 ? fullText.substring(0, 57) + '...' : fullText
       ctx.fillText(descText, 40, y)
       
       ctx.fillStyle = isEntrada ? '#34d399' : '#fb7185'
-      ctx.fillText(`${item.cantidad} cajas`, 400, y)
+      ctx.fillText(`${item.cantidad} cajas`, 420, y)
 
       totalCajas += item.cantidad
       totalUnits += item.cantidad * item.unidades_por_caja
