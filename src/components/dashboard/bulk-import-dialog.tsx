@@ -128,21 +128,21 @@ export function BulkImportDialog() {
           capacidad = 'N/A'
         }
       }
-      // Format B: 5 columns (Standard Código | Nombre | Marca | Color | Capacidad)
+      // Format B: 5 columns (Código | Marca | Modelo | Memoria | Color)
       else if (cols.length >= 5) {
         codigo = cols[0]?.trim() || ''
-        nombre = cols[1]?.trim() || ''
-        marca = cols[2]?.trim() || ''
-        color = cols[3]?.trim() || ''
-        capacidad = cols[4]?.trim() || ''
+        marca = cols[1]?.trim() || ''
+        nombre = cols[2]?.trim() || ''
+        capacidad = cols[3]?.trim() || ''
+        color = cols[4]?.trim() || ''
       }
-      // Format C: 4 columns (Código | Detalle (Nombre+Capacidad) | Marca | Color)
+      // Format C: 4 columns (Código | Marca | Detalle (Modelo+Memoria) | Color)
       else if (cols.length >= 4) {
         codigo = cols[0]?.trim() || ''
-        marca = cols[2]?.trim() || ''
+        marca = cols[1]?.trim() || ''
         color = cols[3]?.trim() || ''
         
-        const detail = cols[1]?.trim() || ''
+        const detail = cols[2]?.trim() || ''
         const firstSpace = detail.indexOf(' ')
         if (firstSpace !== -1) {
           nombre = detail.substring(0, firstSpace).trim()
@@ -152,13 +152,13 @@ export function BulkImportDialog() {
           capacidad = 'N/A'
         }
       }
-      // Format D: 3 columns (Código | Detalle | Marca)
+      // Format D: 3 columns (Código | Marca | Detalle)
       else if (cols.length >= 3) {
         codigo = cols[0]?.trim() || ''
-        marca = cols[2]?.trim() || ''
+        marca = cols[1]?.trim() || ''
         color = 'N/A'
         
-        const detail = cols[1]?.trim() || ''
+        const detail = cols[2]?.trim() || ''
         const firstSpace = detail.indexOf(' ')
         if (firstSpace !== -1) {
           nombre = detail.substring(0, firstSpace).trim()
