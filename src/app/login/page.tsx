@@ -15,13 +15,13 @@ import { toast } from 'sonner'
 
 const loginSchema = z.object({
   username: z.string().min(3, { message: 'El usuario debe tener al menos 3 caracteres' }),
-  password: z.string().min(4, { message: 'La contraseña debe tener al menos 4 caracteres' }),
+  password: z.string().min(6, { message: 'La contraseña debe tener al menos 6 caracteres' }),
 })
 
 const signupSchema = z.object({
   fullName: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres' }),
   username: z.string().min(3, { message: 'El usuario debe tener al menos 3 caracteres' }),
-  password: z.string().min(4, { message: 'La contraseña debe tener al menos 4 caracteres' }),
+  password: z.string().min(6, { message: 'La contraseña debe tener al menos 6 caracteres' }),
   role: z.enum(['admin', 'empleado']),
 })
 
@@ -185,7 +185,7 @@ export default function LoginPage() {
                     <Input
                       id="login-password"
                       type="password"
-                      placeholder="••••"
+                      placeholder="••••••"
                       className="pl-9 bg-zinc-950 border-zinc-800 focus:border-emerald-500 text-zinc-100 placeholder-zinc-500"
                       {...registerLogin('password')}
                     />
@@ -253,7 +253,7 @@ export default function LoginPage() {
                     <Input
                       id="signup-password"
                       type="password"
-                      placeholder="Mín. 4 caracteres"
+                      placeholder="Mín. 6 caracteres"
                       className="pl-9 bg-zinc-950 border-zinc-800 focus:border-emerald-500 text-zinc-100 placeholder-zinc-500"
                       {...registerSignup('password')}
                     />

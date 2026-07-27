@@ -357,8 +357,8 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
   // Handle password modification submit
   const handlePasswordChangeSubmit = () => {
     if (!selectedUserForPassword) return
-    if (!newPassword.trim() || newPassword.trim().length < 4) {
-      toast.error('La contraseña debe tener al menos 4 caracteres.')
+    if (!newPassword.trim() || newPassword.trim().length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres.')
       return
     }
 
@@ -896,7 +896,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
           <DialogHeader>
             <DialogTitle className="text-zinc-200">Modificar Contraseña</DialogTitle>
             <DialogDescription className="text-zinc-400 text-xs">
-              Escribe la nueva contraseña para el usuario <span className="font-bold text-zinc-300">@{selectedUserForPassword?.username}</span>. Mínimo 4 caracteres.
+              Escribe la nueva contraseña para el usuario <span className="font-bold text-zinc-300">@{selectedUserForPassword?.username}</span>. Mínimo 6 caracteres.
             </DialogDescription>
           </DialogHeader>
 
@@ -905,7 +905,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
               <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider block">Nueva Contraseña</label>
               <Input
                 type="password"
-                placeholder="Escribe la clave de al menos 4 dígitos..."
+                placeholder="Escribe la clave de al menos 6 dígitos..."
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="bg-zinc-950 border-zinc-850 focus:border-emerald-500 text-xs h-10 text-zinc-100"
