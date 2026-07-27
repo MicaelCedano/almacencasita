@@ -45,151 +45,192 @@ export function VoucherButton({ movement, variant = 'ghost', className, children
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const canvasHeight = 400
+    const canvasHeight = 416
     canvas.width = 500
     canvas.height = canvasHeight
 
-    // Background
-    ctx.fillStyle = '#09090b'
+    // Background - Modern dark slate/blue theme
+    ctx.fillStyle = '#0b0f19'
     ctx.fillRect(0, 0, 500, canvasHeight)
 
     // Outer border
-    ctx.strokeStyle = '#27272a'
-    ctx.lineWidth = 4
+    ctx.strokeStyle = '#1e293b'
+    ctx.lineWidth = 2
     ctx.strokeRect(12, 12, 476, canvasHeight - 24)
 
-    // Header
-    const isEntrada = movement.tipo === 'Entrada'
-    ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
-    ctx.font = 'bold 24px Courier New'
-    ctx.textAlign = 'center'
-    ctx.fillText('ALMACEN CASITA', 250, 55)
-
-    ctx.fillStyle = '#94a3b8'
-    ctx.font = '13px Courier New'
-    ctx.fillText(isEntrada ? 'COMPROBANTE DE ENTRADA' : 'COMPROBANTE DE SALIDA', 250, 80)
-
-    // Divider
-    ctx.strokeStyle = '#3f3f46'
-    ctx.setLineDash([5, 5])
+    // Header Background Accent
+    ctx.fillStyle = '#111827'
     ctx.beginPath()
-    ctx.moveTo(30, 100)
-    ctx.lineTo(470, 100)
-    ctx.stroke()
-    ctx.setLineDash([])
+    ctx.roundRect(12, 12, 476, 90, [12, 12, 0, 0])
+    ctx.fill()
 
-    // Metadata Info
-    ctx.textAlign = 'left'
+    const isEntrada = movement.tipo === 'Entrada'
+
+    // Header Title
+    ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
+    ctx.font = 'bold 20px system-ui, -apple-system, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('ALMACÉN CASITA', 250, 48)
+
+    // Subtitle
     ctx.fillStyle = '#94a3b8'
-    ctx.font = '12px Courier New'
+    ctx.font = '500 12px system-ui, -apple-system, sans-serif'
+    ctx.fillText(isEntrada ? 'COMPROBANTE DE ENTRADA' : 'COMPROBANTE DE SALIDA', 250, 72)
+
+    // Thin separator line
+    ctx.strokeStyle = '#1e293b'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(30, 102)
+    ctx.lineTo(470, 102)
+    ctx.stroke()
+
+    // Metadata Grid Layout
+    ctx.textAlign = 'left'
+    ctx.font = 'bold 10px system-ui, -apple-system, sans-serif'
+    ctx.fillStyle = '#64748b'
     
-    const dateText = new Date(movement.fecha).toLocaleDateString('es-ES', {
+    ctx.fillText('ID MOVIMIENTO', 40, 126)
+    ctx.fillText('FECHA Y HORA', 260, 126)
+    ctx.fillText('REGISTRADO POR', 40, 174)
+    ctx.fillText('ESTADO', 260, 174)
+
+    ctx.font = '500 11px system-ui, -apple-system, sans-serif'
+    ctx.fillStyle = '#f8fafc'
+    
+    const displayId = movement.id.toUpperCase()
+    const truncatedId = displayId.length > 20 ? displayId.substring(0, 18) + '...' : displayId
+    ctx.fillText(truncatedId, 40, 144)
+
+    const dateText = new Date(movement.fecha).toLocaleString('es-ES', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     })
+    ctx.fillText(dateText, 260, 144)
+    ctx.fillText(movement.profiles?.full_name || 'Administrador', 40, 192)
 
-    ctx.fillText('ID MOV:    ', 40, 130)
-    ctx.fillText('FECHA:     ', 40, 150)
-    ctx.fillText('REGISTRÓ:  ', 40, 170)
-    ctx.fillText('ESTADO:    ', 40, 190)
-
-    ctx.fillStyle = '#ffffff'
-    ctx.fillText(movement.id.toUpperCase(), 130, 130)
-    ctx.fillText(dateText, 130, 150)
-    ctx.fillText(movement.profiles?.full_name || 'Administrador', 130, 170)
+    // Status badge
+    const badgeText = isEntrada ? 'INGRESADO E INVENTARIADO' : 'RETIRADO E INVENTARIADO'
+    const badgeBg = isEntrada ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)'
+    const badgeTextCol = isEntrada ? '#34d399' : '#fb7185'
     
-    ctx.fillStyle = isEntrada ? '#34d399' : '#fb7185'
-    ctx.fillText(isEntrada ? 'INGRESADO E INVENTARIADO' : 'RETIRADO E INVENTARIADO', 130, 190)
-
-    // Divider before list
-    ctx.strokeStyle = '#3f3f46'
-    ctx.setLineDash([5, 5])
+    ctx.fillStyle = badgeBg
     ctx.beginPath()
-    ctx.moveTo(30, 210)
-    ctx.lineTo(470, 210)
-    ctx.stroke()
-    ctx.setLineDash([])
+    ctx.roundRect(260, 182, 180, 18, 4)
+    ctx.fill()
 
-    // Table Header
-    let y = 235
-    ctx.fillStyle = '#cbd5e1'
-    ctx.font = 'bold 12px Courier New'
-    ctx.fillText('PRODUCTO (CODIGO)', 40, y)
-    ctx.fillText('CANTIDAD', 420, y)
+    ctx.fillStyle = badgeTextCol
+    ctx.font = 'bold 9px system-ui, -apple-system, sans-serif'
+    ctx.fillText(badgeText, 270, 194)
 
-    y += 10
-    ctx.strokeStyle = '#3f3f46'
+    // Divider before table
+    ctx.strokeStyle = '#1e293b'
     ctx.beginPath()
-    ctx.moveTo(30, y)
-    ctx.lineTo(470, y)
+    ctx.moveTo(30, 222)
+    ctx.lineTo(470, 222)
     ctx.stroke()
-    
-    y += 20
 
-    // Render product row
+    // Table Header Background
+    ctx.fillStyle = '#0f172a'
+    ctx.beginPath()
+    ctx.roundRect(30, 234, 440, 26, 4)
+    ctx.fill()
+
+    // Table Header Labels
+    ctx.fillStyle = '#94a3b8'
+    ctx.font = 'bold 10px system-ui, -apple-system, sans-serif'
+    ctx.fillText('PRODUCTO Y DETALLES', 42, 250)
+    ctx.textAlign = 'right'
+    ctx.fillText('CANTIDAD', 458, 250)
+    ctx.textAlign = 'left' // reset
+
+    let y = 284
     const prod = movement.products
     if (prod) {
+      // 1. Product Name
       ctx.fillStyle = '#ffffff'
-      ctx.font = '10px Courier New'
+      ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
+      const productName = prod.nombre.length > 40 ? prod.nombre.substring(0, 37) + '...' : prod.nombre
+      ctx.fillText(productName, 40, y)
 
-      const name = `${prod.nombre} (${prod.capacidad} - ${prod.color})`
-      const fullText = `[${prod.codigo}] ${name}`
-      const descText = fullText.length > 60 ? fullText.substring(0, 57) + '...' : fullText
-      ctx.fillText(descText, 40, y)
-      
-      ctx.fillStyle = isEntrada ? '#34d399' : '#fb7185'
-      ctx.fillText(`${movement.cantidad} cajas`, 420, y)
+      // 2. Sub-details
+      ctx.fillStyle = '#64748b'
+      ctx.font = 'normal 9px system-ui, -apple-system, sans-serif'
+      const detailsText = `[${prod.codigo}]  ·  ${prod.capacidad}  ·  ${prod.color}`
+      const detailsTrunc = detailsText.length > 55 ? detailsText.substring(0, 52) + '...' : detailsText
+      ctx.fillText(detailsTrunc, 40, y + 14)
+
+      // 3. Quantity
+      ctx.textAlign = 'right'
+      ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
+      ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
+      ctx.fillText(`${movement.cantidad} cajas`, 458, y + 8)
+      ctx.textAlign = 'left' // reset
     } else {
-      ctx.fillStyle = '#ef4444'
+      ctx.fillStyle = '#f43f5e'
+      ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
       ctx.fillText('Producto eliminado o no disponible', 40, y)
     }
 
-    // Divider after list
-    y += 15
-    ctx.strokeStyle = '#3f3f46'
-    ctx.setLineDash([5, 5])
-    ctx.beginPath()
-    ctx.moveTo(30, y)
-    ctx.lineTo(470, y)
-    ctx.stroke()
-    ctx.setLineDash([])
+    y += 36
 
-    // Totals
-    y += 20
-    ctx.fillStyle = '#94a3b8'
-    ctx.font = '12px Courier New'
+    // Divider after list
+    ctx.strokeStyle = '#1e293b'
+    ctx.beginPath()
+    ctx.moveTo(30, y - 5)
+    ctx.lineTo(470, y - 5)
+    ctx.stroke()
+
+    // Totals Section
+    y += 15
+    ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
+    ctx.fillStyle = '#64748b'
     ctx.fillText('TOTAL CAJAS:', 40, y)
+    
+    ctx.textAlign = 'right'
     ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
-    ctx.font = 'bold 13px Courier New'
-    ctx.fillText(`${movement.cantidad} cajas`, 190, y)
+    ctx.font = 'bold 13px system-ui, -apple-system, sans-serif'
+    ctx.fillText(`${movement.cantidad} cajas`, 458, y)
+    ctx.textAlign = 'left' // reset
 
     if (prod) {
       y += 20
-      ctx.fillStyle = '#94a3b8'
-      ctx.font = '12px Courier New'
-      ctx.fillText('TOTAL UDS:', 40, y)
-      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
+      ctx.fillStyle = '#64748b'
+      ctx.fillText('TOTAL UNIDADES:', 40, y)
+      
+      ctx.textAlign = 'right'
+      ctx.fillStyle = '#f8fafc'
+      ctx.font = 'bold 12px system-ui, -apple-system, sans-serif'
       const totalUnits = movement.cantidad * prod.unidades_por_caja
-      ctx.fillText(`${totalUnits} celulares`, 190, y)
+      ctx.fillText(`${totalUnits} celulares`, 458, y)
+      ctx.textAlign = 'left' // reset
     }
 
+    // Modern Barcode container
     y += 25
-    // barcode simulation
-    ctx.fillStyle = '#94a3b8'
-    ctx.textAlign = 'center'
-    ctx.font = '10px Courier New'
-    ctx.fillText('*' + movement.id.toUpperCase() + '*', 250, y + 40)
-    
+    ctx.fillStyle = '#111827'
+    ctx.beginPath()
+    ctx.roundRect(100, y, 300, 36, 6)
+    ctx.fill()
+
+    // Barcode lines
     ctx.fillStyle = '#ffffff'
-    let startX = 135
-    for (let i = 0; i < 35; i++) {
-      const lineWidth = (Math.sin(i * 3.7) > 0) ? 5 : 2
-      ctx.fillRect(startX, y, lineWidth, 28)
-      startX += lineWidth + (i % 3 === 0 ? 3 : 1)
+    let startX = 115
+    for (let i = 0; i < 45; i++) {
+      const lineWidth = (Math.sin(i * 3.7) > 0) ? 4 : 1
+      ctx.fillRect(startX, y + 4, lineWidth, 28)
+      startX += lineWidth + (i % 3 === 0 ? 2 : 1)
     }
+
+    y += 50
+    ctx.fillStyle = '#64748b'
+    ctx.textAlign = 'center'
+    ctx.font = '500 8px monospace'
+    ctx.fillText('*' + movement.id.toUpperCase() + '*', 250, y)
   }
 
   const canvasRefCallback = useCallback((node: HTMLCanvasElement | null) => {
