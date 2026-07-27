@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ClipboardList, Loader2, AlertCircle, Check } from 'lucide-react'
 import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
 
 interface ParsedProduct {
   codigo: string;
@@ -14,6 +15,67 @@ interface ParsedProduct {
   color: string;
   capacidad: string;
   unidades_por_caja: number;
+}
+
+function getColorBadgeStyle(colorName: string): React.CSSProperties {
+  const name = colorName.toLowerCase().trim()
+  
+  // Default fallback (zinc style)
+  let bg = 'rgba(39, 39, 42, 0.4)'
+  let text = '#d4d4d8'
+  let border = '#3f3f46'
+  
+  if (name.includes('azul') || name.includes('blue')) {
+    bg = 'rgba(59, 130, 246, 0.15)'
+    text = '#60a5fa'
+    border = 'rgba(59, 130, 246, 0.35)'
+  } else if (name.includes('verde') || name.includes('green')) {
+    bg = 'rgba(16, 185, 129, 0.15)'
+    text = '#34d399'
+    border = 'rgba(16, 185, 129, 0.35)'
+  } else if (name.includes('rojo') || name.includes('red')) {
+    bg = 'rgba(239, 68, 68, 0.15)'
+    text = '#f87171'
+    border = 'rgba(239, 68, 68, 0.35)'
+  } else if (name.includes('naranja') || name.includes('orange')) {
+    bg = 'rgba(249, 115, 22, 0.15)'
+    text = '#fb923c'
+    border = 'rgba(249, 115, 22, 0.35)'
+  } else if (name.includes('amarillo') || name.includes('yellow')) {
+    bg = 'rgba(234, 179, 8, 0.15)'
+    text = '#facc15'
+    border = 'rgba(234, 179, 8, 0.35)'
+  } else if (name.includes('rosa') || name.includes('pink')) {
+    bg = 'rgba(236, 72, 153, 0.15)'
+    text = '#f472b6'
+    border = 'rgba(236, 72, 153, 0.35)'
+  } else if (name.includes('morado') || name.includes('purpura') || name.includes('purple')) {
+    bg = 'rgba(168, 85, 247, 0.15)'
+    text = '#c084fc'
+    border = 'rgba(168, 85, 247, 0.35)'
+  } else if (name.includes('negro') || name.includes('black') || name.includes('oscuro')) {
+    bg = 'rgba(9, 9, 11, 0.8)'
+    text = '#ffffff'
+    border = 'rgba(255, 255, 255, 0.15)'
+  } else if (name.includes('blanco') || name.includes('white')) {
+    bg = 'rgba(255, 255, 255, 0.95)'
+    text = '#09090b'
+    border = 'rgba(0, 0, 0, 0.15)'
+  } else if (name.includes('gris') || name.includes('gray') || name.includes('grey') || name.includes('titanio') || name.includes('plata') || name.includes('silver')) {
+    bg = 'rgba(100, 116, 139, 0.15)'
+    text = '#cbd5e1'
+    border = 'rgba(100, 116, 139, 0.35)'
+  } else if (name.includes('oro') || name.includes('dorado') || name.includes('gold')) {
+    bg = 'rgba(202, 138, 4, 0.15)'
+    text = '#fef08a'
+    border = 'rgba(202, 138, 4, 0.35)'
+  }
+
+  return {
+    backgroundColor: bg,
+    color: text,
+    borderColor: border,
+  }
 }
 
 export function BulkImportDialog() {
@@ -190,10 +252,10 @@ export function BulkImportDialog() {
                   <thead className="bg-zinc-950 text-zinc-500 font-mono tracking-wider border-b border-zinc-850">
                     <tr>
                       <th className="p-2">Código</th>
-                      <th className="p-2">Modelo</th>
                       <th className="p-2">Marca</th>
-                      <th className="p-2">Color</th>
+                      <th className="p-2">Modelo</th>
                       <th className="p-2">Memoria</th>
+                      <th className="p-2">Color</th>
                       <th className="p-2 text-right">Uds/Caja</th>
                     </tr>
                   </thead>
@@ -201,10 +263,18 @@ export function BulkImportDialog() {
                     {parsedProducts.map((p, idx) => (
                       <tr key={idx} className="border-b border-zinc-850/40 hover:bg-zinc-900/10">
                         <td className="p-2 font-mono text-zinc-100">{p.codigo}</td>
-                        <td className="p-2 font-medium">{p.nombre}</td>
                         <td className="p-2">{p.marca}</td>
-                        <td className="p-2">{p.color}</td>
+                        <td className="p-2 font-medium">{p.nombre}</td>
                         <td className="p-2 font-mono text-zinc-400">{p.capacidad}</td>
+                        <td className="p-2">
+                          <Badge 
+                            variant="outline" 
+                            style={getColorBadgeStyle(p.color)}
+                            className="border text-[10px] font-medium uppercase"
+                          >
+                            {p.color}
+                          </Badge>
+                        </td>
                         <td className="p-2 text-right font-mono text-zinc-400">{p.unidades_por_caja}</td>
                       </tr>
                     ))}
