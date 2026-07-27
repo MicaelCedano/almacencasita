@@ -218,7 +218,7 @@ export function BulkImportDialog() {
         <span>Carga Masiva (Excel)</span>
       </DialogTrigger>
       
-      <DialogContent className="bg-zinc-900 border border-zinc-800 text-zinc-100 max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="bg-zinc-900 border border-zinc-800 text-zinc-100 max-w-4xl w-full max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-emerald-400" />
