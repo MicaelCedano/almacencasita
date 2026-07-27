@@ -181,7 +181,8 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
       ctx.font = '12px Courier New'
 
       const name = `${item.nombre} (${item.capacidad} - ${item.color})`
-      const descText = `[${item.codigo}] ${name.substring(0, 26)}`
+      const fullText = `[${item.codigo}] ${name}`
+      const descText = fullText.length > 40 ? fullText.substring(0, 37) + '...' : fullText
       ctx.fillText(descText, 40, y)
       
       ctx.fillStyle = isEntrada ? '#34d399' : '#fb7185'

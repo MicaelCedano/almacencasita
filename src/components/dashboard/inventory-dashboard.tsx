@@ -318,7 +318,8 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
       ctx.font = '12px Courier New'
 
       const name = `${item.nombre} (${item.capacidad} - ${item.color})`
-      const descText = `[${item.codigo}] ${name.substring(0, 26)}`
+      const fullText = `[${item.codigo}] ${name}`
+      const descText = fullText.length > 40 ? fullText.substring(0, 37) + '...' : fullText
       ctx.fillText(descText, 40, y)
       
       ctx.fillStyle = '#34d399' // highlight count in emerald
