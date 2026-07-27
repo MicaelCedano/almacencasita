@@ -484,6 +484,11 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
         cell: ({ row }) => <span className="font-mono text-zinc-300 font-semibold">{row.getValue('codigo')}</span>,
       },
       {
+        accessorKey: 'marca',
+        header: 'Marca',
+        cell: ({ row }) => <span className="text-zinc-400">{row.getValue('marca')}</span>,
+      },
+      {
         accessorKey: 'nombre',
         header: ({ column }) => (
           <Button
@@ -506,9 +511,13 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
         ),
       },
       {
-        accessorKey: 'marca',
-        header: 'Marca',
-        cell: ({ row }) => <span className="text-zinc-400">{row.getValue('marca')}</span>,
+        accessorKey: 'capacidad',
+        header: 'Memoria',
+        cell: ({ row }) => (
+          <Badge variant="outline" className="border-emerald-500/25 bg-emerald-500/5 text-emerald-400 font-mono text-[10px] font-bold">
+            {row.getValue('capacidad')}
+          </Badge>
+        ),
       },
       {
         accessorKey: 'color',
@@ -516,15 +525,6 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
         cell: ({ row }) => (
           <Badge variant="outline" className="border-zinc-800 bg-zinc-950/60 text-zinc-300">
             {row.getValue('color')}
-          </Badge>
-        ),
-      },
-      {
-        accessorKey: 'capacidad',
-        header: 'Memoria',
-        cell: ({ row }) => (
-          <Badge variant="outline" className="border-emerald-500/25 bg-emerald-500/5 text-emerald-400 font-mono text-[10px] font-bold">
-            {row.getValue('capacidad')}
           </Badge>
         ),
       },

@@ -158,10 +158,10 @@ export default function ProductList({ products }: ProductListProps) {
             <TableHeader className="bg-zinc-950/80">
               <TableRow className="border-b border-zinc-800 hover:bg-transparent">
                 <TableHead className="text-zinc-400 py-3 text-xs">Código (Kaptas)</TableHead>
-                <TableHead className="text-zinc-400 py-3 text-xs">Modelo / Celular</TableHead>
                 <TableHead className="text-zinc-400 py-3 text-xs">Marca</TableHead>
-                <TableHead className="text-zinc-400 py-3 text-xs">Color</TableHead>
+                <TableHead className="text-zinc-400 py-3 text-xs">Modelo / Celular</TableHead>
                 <TableHead className="text-zinc-400 py-3 text-xs">RAM+GB</TableHead>
+                <TableHead className="text-zinc-400 py-3 text-xs">Color</TableHead>
                 <TableHead className="text-zinc-400 py-3 text-xs">Empaque</TableHead>
                 <TableHead className="text-zinc-400 py-3 text-xs">Stock Físico</TableHead>
                 <TableHead className="text-zinc-400 py-3 text-xs text-right">Acciones</TableHead>
@@ -174,6 +174,9 @@ export default function ProductList({ products }: ProductListProps) {
                     <TableCell className="py-4 text-xs font-mono font-semibold text-zinc-300">
                       {product.codigo}
                     </TableCell>
+                    <TableCell className="py-4 text-xs text-zinc-400">
+                      {product.marca}
+                    </TableCell>
                     <TableCell className="py-4 text-xs">
                       <div className="flex flex-col">
                         <span className="text-zinc-100 font-medium">{product.nombre}</span>
@@ -184,17 +187,14 @@ export default function ProductList({ products }: ProductListProps) {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="py-4 text-xs text-zinc-400">
-                      {product.marca}
+                    <TableCell className="py-4 text-xs">
+                      <Badge variant="outline" className="border-emerald-500/25 bg-emerald-500/5 text-emerald-400 font-mono text-[10px] font-bold">
+                        {product.capacidad}
+                      </Badge>
                     </TableCell>
                     <TableCell className="py-4 text-xs">
                       <Badge variant="outline" className="border-zinc-800 bg-zinc-950/60 text-zinc-300 text-[10px]">
                         {product.color}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="py-4 text-xs">
-                      <Badge variant="outline" className="border-emerald-500/25 bg-emerald-500/5 text-emerald-400 font-mono text-[10px] font-bold">
-                        {product.capacidad}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-4 text-xs text-zinc-500 font-mono">
