@@ -35,7 +35,7 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
   // Selected items list state
   const [selectedItems, setSelectedItems] = useState<{
     product: typeof products[number];
-    cantidad: number;
+    cantidad: number | '';
   }[]>([])
 
   const [motivo, setMotivo] = useState('')
@@ -294,13 +294,15 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
       return
     }
 
-    // Client-side stock check for Salidas
-    if (tipo === 'Salida') {
-      for (const item of selectedItems) {
-        if (item.product.cajas < item.cantidad) {
-          toast.error(`Stock insuficiente para ${item.product.nombre}. Solo hay ${item.product.cajas} cajas disponibles.`)
-          return
-        }
+    // Client-side validation and stock check
+    for (const item of selectedItems) {
+      if (item.cantidad === '' || item.cantidad <= 0) {
+        toast.error(`Por favor, ingresa una cantidad válida de cajas (mayor que 0) para ${item.product.nombre}.`)
+        return
+      }
+      if (tipo === 'Salida' && item.product.cajas < item.cantidad) {
+        toast.error(`Stock insuficiente para ${item.product.nombre}. Solo hay ${item.product.cajas} cajas disponibles.`)
+        return
       }
     }
 
@@ -311,7 +313,7 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
         motivo: motivo.trim() || 'Sin descripción',
         items: selectedItems.map(item => ({
           producto_id: item.product.id,
-          cantidad: item.cantidad
+          cantidad: Number(item.cantidad)
         }))
       })
 
@@ -444,7 +446,7 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
                           min="1"
                           value={item.cantidad}
                           onChange={(e) => {
-                            const val = parseInt(e.target.value) || 1
+                            const val = e.target.value === '' ? '' : (parseInt(e.target.value) || 0)
                             setSelectedItems(prev => prev.map((it, idx) => idx === index ? { ...it, cantidad: val } : it))
                           }}
                           className="w-16 h-8 text-center bg-zinc-950 border-zinc-800 text-xs focus:border-emerald-500 font-mono"
