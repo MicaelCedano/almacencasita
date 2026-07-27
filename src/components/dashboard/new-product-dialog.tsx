@@ -36,7 +36,7 @@ export function NewProductDialog() {
   } = useForm({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      unidades_por_caja: 10,
+      unidades_por_caja: 20,
     },
   })
 
@@ -96,7 +96,7 @@ export function NewProductDialog() {
               <Input
                 id="unidades_por_caja"
                 type="number"
-                placeholder="10"
+                placeholder="20"
                 className="bg-zinc-950 border-zinc-800 focus:border-emerald-500 text-xs"
                 {...register('unidades_por_caja')}
               />
