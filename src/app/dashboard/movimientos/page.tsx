@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { History, ArrowUpRight, ArrowDownLeft, Calendar, User, ClipboardList } from 'lucide-react'
 import { cookies } from 'next/headers'
 import { isSupabaseConfigured, readLocalDB } from '@/lib/db'
+import { VoucherButton } from '@/components/dashboard/voucher-button'
 
 interface MovementRecord {
   id: string;
@@ -16,6 +17,10 @@ interface MovementRecord {
   products: {
     codigo: string;
     nombre: string;
+    marca: string;
+    color: string;
+    capacidad: string;
+    unidades_por_caja: number;
   } | null;
   profiles: {
     full_name: string;
@@ -44,7 +49,14 @@ export default async function MovimientosPage() {
         tipo: m.tipo,
         motivo: m.motivo,
         fecha: m.fecha,
-        products: product ? { codigo: product.codigo, nombre: product.nombre } : null,
+        products: product ? { 
+          codigo: product.codigo, 
+          nombre: product.nombre,
+          marca: product.marca,
+          color: product.color,
+          capacidad: product.capacidad,
+          unidades_por_caja: product.unidades_por_caja
+        } : null,
         profiles: userObj ? { full_name: userObj.fullName } : { full_name: 'Administrador' }
       } as MovementRecord
     })
@@ -74,6 +86,7 @@ export default async function MovimientosPage() {
                   <TableHead className="text-zinc-400 py-3 text-xs">Cantidad</TableHead>
                   <TableHead className="text-zinc-400 py-3 text-xs">Motivo / Detalle</TableHead>
                   <TableHead className="text-zinc-400 py-3 text-xs">Registrado Por</TableHead>
+                  <TableHead className="text-zinc-400 py-3 text-xs text-right">Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -143,6 +156,9 @@ export default async function MovimientosPage() {
                             {mov.profiles?.full_name || 'Desconocido'}
                           </span>
                         </TableCell>
+                        <TableCell className="py-4 text-xs text-right">
+                          <VoucherButton movement={mov} className="text-zinc-400 hover:text-emerald-400 hover:bg-zinc-900 h-7 text-[10px] gap-1 px-2" />
+                        </TableCell>
                       </TableRow>
                     )
                   })
@@ -174,7 +190,11 @@ export default async function MovimientosPage() {
       fecha,
       products (
         codigo,
-        nombre
+        nombre,
+        marca,
+        color,
+        capacidad,
+        unidades_por_caja
       ),
       profiles (
         full_name
@@ -211,6 +231,7 @@ export default async function MovimientosPage() {
                 <TableHead className="text-zinc-400 py-3 text-xs">Cantidad</TableHead>
                 <TableHead className="text-zinc-400 py-3 text-xs">Motivo / Detalle</TableHead>
                 <TableHead className="text-zinc-400 py-3 text-xs">Registrado Por</TableHead>
+                <TableHead className="text-zinc-400 py-3 text-xs text-right">Acción</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -255,9 +276,9 @@ export default async function MovimientosPage() {
                         >
                           <span className="flex items-center gap-1">
                             {isEntrada ? (
-                              <ArrowDownLeft className="w-3 h-3 text-emerald-400" />
+                              <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-400" />
                             ) : (
-                              <ArrowUpRight className="w-3 h-3 text-amber-400" />
+                              <ArrowUpRight className="w-3.5 h-3.5 text-amber-400" />
                             )}
                             {mov.tipo}
                           </span>
@@ -279,6 +300,9 @@ export default async function MovimientosPage() {
                           <User className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
                           {mov.profiles?.full_name || 'Desconocido'}
                         </span>
+                      </TableCell>
+                      <TableCell className="py-4 text-xs text-right">
+                        <VoucherButton movement={mov} className="text-zinc-400 hover:text-emerald-400 hover:bg-zinc-900 h-7 text-[10px] gap-1 px-2" />
                       </TableCell>
                     </TableRow>
                   )

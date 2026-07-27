@@ -123,7 +123,7 @@ export async function createMovement(formData: {
     product.cantidad = product.cajas * product.unidades_por_caja
     product.fecha_actualizacion = new Date().toISOString()
 
-    db.movements.push({
+    const newMovement = {
       id: 'mov_' + Math.random().toString(36).substr(2, 9),
       producto_id: formData.producto_id,
       cantidad: formData.cantidad,
@@ -131,18 +131,51 @@ export async function createMovement(formData: {
       motivo: formData.motivo.trim(),
       usuario_id: user.id,
       fecha: new Date().toISOString()
-    })
+    }
+
+    db.movements.push(newMovement)
 
     writeLocalDB(db)
 
     revalidatePath('/dashboard')
-    return { success: true }
+    return { 
+      success: true,
+      movement: {
+        id: newMovement.id,
+        fecha: newMovement.fecha,
+        tipo: newMovement.tipo,
+        cantidad: newMovement.cantidad,
+        motivo: newMovement.motivo,
+        product: {
+          codigo: product.codigo,
+          nombre: product.nombre,
+          marca: product.marca,
+          color: product.color,
+          capacidad: product.capacidad,
+          unidades_por_caja: product.unidades_por_caja,
+        },
+        user: {
+          fullName: user.fullName
+        }
+      }
+    }
   }
 
   // --- Supabase DB ---
   const supabase = await createClient()
 
-  const { error } = await supabase
+  // Fetch product details for the voucher
+  const { data: product, error: prodError } = await supabase
+    .from('products')
+    .select('codigo, nombre, marca, color, capacidad, unidades_por_caja')
+    .eq('id', formData.producto_id)
+    .single()
+
+  if (prodError) {
+    return { success: false, error: 'Error al obtener detalles del producto: ' + prodError.message }
+  }
+
+  const { data: newMov, error } = await supabase
     .from('movements')
     .insert({
       producto_id: formData.producto_id,
@@ -151,13 +184,169 @@ export async function createMovement(formData: {
       motivo: formData.motivo,
       usuario_id: user.id,
     })
+    .select('id, fecha')
+    .single()
 
   if (error) {
     return { success: false, error: error.message }
   }
 
   revalidatePath('/dashboard')
-  return { success: true }
+  return { 
+    success: true,
+    movement: {
+      id: newMov.id,
+      fecha: newMov.fecha,
+      tipo: formData.tipo,
+      cantidad: formData.cantidad,
+      motivo: formData.motivo,
+      product: {
+        codigo: product.codigo,
+        nombre: product.nombre,
+        marca: product.marca,
+        color: product.color,
+        capacidad: product.capacidad,
+        unidades_por_caja: product.unidades_por_caja,
+      },
+      user: {
+        fullName: user.fullName
+      }
+    }
+  }
+}
+
+export async function createMovementsBulk(formData: {
+  tipo: 'Entrada' | 'Salida';
+  motivo: string;
+  items: { producto_id: string; cantidad: number }[];
+}) {
+  const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden registrar movimientos.' }
+
+  if (!formData.items || formData.items.length === 0) {
+    return { success: false, error: 'Debe agregar al menos un producto.' }
+  }
+
+  if (isLocal) {
+    const db = readLocalDB()
+    const resultItems = []
+    const batchId = 'batch_' + Math.random().toString(36).substr(2, 9)
+
+    for (const item of formData.items) {
+      const product = db.products.find((p) => p.id === item.producto_id)
+      if (!product) {
+        return { success: false, error: 'Producto no encontrado.' }
+      }
+
+      if (formData.tipo === 'Salida') {
+        if (product.cajas < item.cantidad) {
+          return { success: false, error: `Stock de cajas insuficiente para realizar la salida de ${product.nombre}.` }
+        }
+        product.cajas -= item.cantidad
+      } else {
+        product.cajas += item.cantidad
+      }
+
+      product.cantidad = product.cajas * product.unidades_por_caja
+      product.fecha_actualizacion = new Date().toISOString()
+
+      db.movements.push({
+        id: 'mov_' + Math.random().toString(36).substr(2, 9),
+        producto_id: item.producto_id,
+        cantidad: item.cantidad,
+        tipo: formData.tipo,
+        motivo: formData.motivo.trim(),
+        usuario_id: user.id,
+        fecha: new Date().toISOString()
+      })
+
+      resultItems.push({
+        codigo: product.codigo,
+        nombre: product.nombre,
+        marca: product.marca,
+        color: product.color,
+        capacidad: product.capacidad,
+        unidades_por_caja: product.unidades_por_caja,
+        cantidad: item.cantidad,
+      })
+    }
+
+    writeLocalDB(db)
+
+    revalidatePath('/dashboard')
+    return { 
+      success: true,
+      movementBatch: {
+        id: batchId,
+        fecha: new Date().toISOString(),
+        tipo: formData.tipo,
+        motivo: formData.motivo,
+        items: resultItems,
+        user: {
+          fullName: user.fullName
+        }
+      }
+    }
+  }
+
+  // --- Supabase DB ---
+  const supabase = await createClient()
+  const resultItems = []
+  const batchId = 'batch_' + Math.random().toString(36).substr(2, 9)
+
+  for (const item of formData.items) {
+    const { data: product, error: prodError } = await supabase
+      .from('products')
+      .select('codigo, nombre, marca, color, capacidad, unidades_por_caja')
+      .eq('id', item.producto_id)
+      .single()
+
+    if (prodError || !product) {
+      return { success: false, error: 'Error al obtener detalles de uno de los productos.' }
+    }
+
+    const { error } = await supabase
+      .from('movements')
+      .insert({
+        producto_id: item.producto_id,
+        cantidad: item.cantidad,
+        tipo: formData.tipo,
+        motivo: formData.motivo,
+        usuario_id: user.id,
+      })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    resultItems.push({
+      codigo: product.codigo,
+      nombre: product.nombre,
+      marca: product.marca,
+      color: product.color,
+      capacidad: product.capacidad,
+      unidades_por_caja: product.unidades_por_caja,
+      cantidad: item.cantidad,
+    })
+  }
+
+  revalidatePath('/dashboard')
+  return { 
+    success: true,
+    movementBatch: {
+      id: batchId,
+      fecha: new Date().toISOString(),
+      tipo: formData.tipo,
+      motivo: formData.motivo,
+      items: resultItems,
+      user: {
+        fullName: user.fullName
+      }
+    }
+  }
 }
 
 export async function deleteProduct(id: string) {

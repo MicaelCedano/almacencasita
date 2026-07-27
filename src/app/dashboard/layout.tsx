@@ -182,6 +182,12 @@ export default async function DashboardLayout({
               >
                 Movimientos
               </Link>
+              <Link
+                href="/dashboard/solicitudes"
+                className="text-xs font-medium text-zinc-300 hover:text-zinc-50 py-1"
+              >
+                Solicitudes
+              </Link>
             </>
           )}
         </div>
