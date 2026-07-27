@@ -137,7 +137,7 @@ export function VoucherButton({ movement, variant = 'ghost', className, children
 
       const name = `${prod.nombre} (${prod.capacidad} - ${prod.color})`
       const fullText = `[${prod.codigo}] ${name}`
-      const descText = fullText.length > 40 ? fullText.substring(0, 37) + '...' : fullText
+      const descText = fullText.length > 45 ? fullText.substring(0, 42) + '...' : fullText
       ctx.fillText(descText, 40, y)
       
       ctx.fillStyle = isEntrada ? '#34d399' : '#fb7185'

@@ -170,7 +170,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
 
       const name = `${item.nombre} (${item.capacidad} - ${item.color})`
       const fullText = `[${item.codigo}] ${name}`
-      const descText = fullText.length > 40 ? fullText.substring(0, 37) + '...' : fullText
+      const descText = fullText.length > 45 ? fullText.substring(0, 42) + '...' : fullText
       ctx.fillText(descText, 40, y)
       
       ctx.fillStyle = '#34d399' // highlight count in emerald
