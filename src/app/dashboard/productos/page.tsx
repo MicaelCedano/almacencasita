@@ -61,7 +61,18 @@ export default async function ProductosPage() {
     if (data) products = data as unknown as ProductRow[]
   }
 
-  const sortedProducts = [...products].sort((a, b) => a.codigo.localeCompare(b.codigo))
+  const sortedProducts = [...products].sort((a, b) => {
+    const brandCompare = a.marca.localeCompare(b.marca)
+    if (brandCompare !== 0) return brandCompare
+
+    const nameCompare = a.nombre.localeCompare(b.nombre)
+    if (nameCompare !== 0) return nameCompare
+
+    const capCompare = a.capacidad.localeCompare(b.capacidad)
+    if (capCompare !== 0) return capCompare
+
+    return a.color.localeCompare(b.color)
+  })
 
   return (
     <div className="space-y-6">

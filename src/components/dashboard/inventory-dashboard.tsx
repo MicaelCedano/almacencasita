@@ -444,6 +444,18 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
           ultimo_movimiento: ultimoMovText,
         }
       })
+      .sort((a, b) => {
+        const brandCompare = a.marca.localeCompare(b.marca)
+        if (brandCompare !== 0) return brandCompare
+
+        const nameCompare = a.nombre.localeCompare(b.nombre)
+        if (nameCompare !== 0) return nameCompare
+
+        const capCompare = a.capacidad.localeCompare(b.capacidad)
+        if (capCompare !== 0) return capCompare
+
+        return a.color.localeCompare(b.color)
+      })
   }, [products])
 
   // Filtered data based on Dropdown
