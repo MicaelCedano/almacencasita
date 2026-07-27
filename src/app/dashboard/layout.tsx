@@ -77,7 +77,7 @@ export default async function DashboardLayout({
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 space-y-1.5">
+        <nav className="space-y-1.5">
           <Link
             href="/dashboard"
             className="flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg text-zinc-200 hover:text-zinc-50 hover:bg-zinc-800/60 transition-all duration-200"
