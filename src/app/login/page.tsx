@@ -148,7 +148,7 @@ export default function LoginPage() {
             <CardDescription className="text-center text-zinc-400">
               {activeTab === 'login'
                 ? 'Ingresa tu usuario y contraseña para acceder'
-                : 'Crea tu usuario asignando un rol de trabajo'}
+                : 'Crea tu usuario para solicitar acceso como Almacenista'}
             </CardDescription>
           </CardHeader>
 
@@ -263,26 +263,7 @@ export default function LoginPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="signup-role">Rol de Trabajo</Label>
-                  <div className="relative">
-                    <Shield className="absolute left-3 top-3 h-4 w-4 text-zinc-500 z-10" />
-                    <Select
-                      value={selectedRole}
-                      onValueChange={(val) => {
-                        if (val) setSignupValue('role', val)
-                      }}
-                    >
-                      <SelectTrigger className="pl-9 bg-zinc-950 border-zinc-800 focus:border-emerald-500 text-zinc-100">
-                        <SelectValue placeholder="Seleccionar rol" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
-                        <SelectItem value="empleado">Almacenista (Solicitudes de Salida)</SelectItem>
-                        <SelectItem value="admin">Administrador (Control Total)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+
 
                 <Button
                   type="submit"
