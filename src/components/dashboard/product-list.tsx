@@ -40,6 +40,67 @@ interface Product {
   fecha_creacion: string;
 }
 
+function getColorBadgeStyle(colorName: string): React.CSSProperties {
+  const name = colorName.toLowerCase().trim()
+  
+  // Default fallback (zinc style)
+  let bg = 'rgba(39, 39, 42, 0.4)'
+  let text = '#d4d4d8'
+  let border = '#3f3f46'
+  
+  if (name.includes('azul') || name.includes('blue')) {
+    bg = 'rgba(59, 130, 246, 0.15)'
+    text = '#60a5fa'
+    border = 'rgba(59, 130, 246, 0.35)'
+  } else if (name.includes('verde') || name.includes('green')) {
+    bg = 'rgba(16, 185, 129, 0.15)'
+    text = '#34d399'
+    border = 'rgba(16, 185, 129, 0.35)'
+  } else if (name.includes('rojo') || name.includes('red')) {
+    bg = 'rgba(239, 68, 68, 0.15)'
+    text = '#f87171'
+    border = 'rgba(239, 68, 68, 0.35)'
+  } else if (name.includes('naranja') || name.includes('orange')) {
+    bg = 'rgba(249, 115, 22, 0.15)'
+    text = '#fb923c'
+    border = 'rgba(249, 115, 22, 0.35)'
+  } else if (name.includes('amarillo') || name.includes('yellow')) {
+    bg = 'rgba(234, 179, 8, 0.15)'
+    text = '#facc15'
+    border = 'rgba(234, 179, 8, 0.35)'
+  } else if (name.includes('rosa') || name.includes('pink')) {
+    bg = 'rgba(236, 72, 153, 0.15)'
+    text = '#f472b6'
+    border = 'rgba(236, 72, 153, 0.35)'
+  } else if (name.includes('morado') || name.includes('purpura') || name.includes('purple')) {
+    bg = 'rgba(168, 85, 247, 0.15)'
+    text = '#c084fc'
+    border = 'rgba(168, 85, 247, 0.35)'
+  } else if (name.includes('negro') || name.includes('black') || name.includes('oscuro')) {
+    bg = 'rgba(9, 9, 11, 0.8)'
+    text = '#ffffff'
+    border = 'rgba(255, 255, 255, 0.15)'
+  } else if (name.includes('blanco') || name.includes('white')) {
+    bg = 'rgba(255, 255, 255, 0.95)'
+    text = '#09090b'
+    border = 'rgba(0, 0, 0, 0.15)'
+  } else if (name.includes('gris') || name.includes('gray') || name.includes('grey') || name.includes('titanio') || name.includes('plata') || name.includes('silver')) {
+    bg = 'rgba(100, 116, 139, 0.15)'
+    text = '#cbd5e1'
+    border = 'rgba(100, 116, 139, 0.35)'
+  } else if (name.includes('oro') || name.includes('dorado') || name.includes('gold')) {
+    bg = 'rgba(202, 138, 4, 0.15)'
+    text = '#fef08a'
+    border = 'rgba(202, 138, 4, 0.35)'
+  }
+
+  return {
+    backgroundColor: bg,
+    color: text,
+    borderColor: border,
+  }
+}
+
 interface ProductListProps {
   products: Product[];
 }
@@ -193,7 +254,11 @@ export default function ProductList({ products }: ProductListProps) {
                       </Badge>
                     </TableCell>
                     <TableCell className="py-4 text-xs">
-                      <Badge variant="outline" className="border-zinc-800 bg-zinc-950/60 text-zinc-300 text-[10px]">
+                      <Badge 
+                        variant="outline" 
+                        style={getColorBadgeStyle(product.color)}
+                        className="border text-[10px] font-medium uppercase"
+                      >
                         {product.color}
                       </Badge>
                     </TableCell>
@@ -280,7 +345,11 @@ export default function ProductList({ products }: ProductListProps) {
                   <Badge variant="outline" className="border-zinc-800 bg-zinc-900/60 text-zinc-350 text-[10px] py-0.5">
                     {product.marca}
                   </Badge>
-                  <Badge variant="outline" className="border-zinc-800 bg-zinc-900/60 text-zinc-350 text-[10px] py-0.5">
+                  <Badge 
+                    variant="outline" 
+                    style={getColorBadgeStyle(product.color)}
+                    className="border text-[10px] py-0.5 font-medium uppercase"
+                  >
                     {product.color}
                   </Badge>
                   <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-[10px] py-0.5 font-bold font-mono">
