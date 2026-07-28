@@ -290,40 +290,53 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
     toast.success('Voucher descargado correctamente.')
   }
 
-  const handleWhatsAppShare = () => {
-    if (!createdMovement) return
-    const dateText = new Date(createdMovement.fecha).toLocaleString()
+  const handleWhatsAppShare = async () => {
+    if (!canvasRef.current || !createdMovement) return
+    
+    try {
+      canvasRef.current.toBlob(async (blob) => {
+        if (!blob) {
+          toast.error('No se pudo generar la imagen del comprobante.')
+          return
+        }
 
-    let itemsText = ''
-    let totalCajas = 0
-    let totalUnits = 0
+        const file = new File([blob], `Voucher_${createdMovement.id.toUpperCase()}.png`, { type: 'image/png' })
 
-    createdMovement.items.forEach((item: any, idx: number) => {
-      const units = item.cantidad * item.unidades_por_caja
-      totalCajas += item.cantidad
-      totalUnits += units
-      itemsText += `${idx + 1}. *[${item.codigo}] ${item.nombre}*\n` +
-        `   Color: ${item.color} | Memoria: ${item.capacidad}\n` +
-        `   Cantidad: *${item.cantidad} cajas* (${units} celulares)\n`
-    })
+        // 1. Try Web Share API (mainly for mobile devices)
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: `Comprobante de ${createdMovement.tipo}`,
+              text: `Almacén Casita - Comprobante de ${createdMovement.tipo}`
+            })
+            return
+          } catch (shareErr) {
+            // User cancelled or sharing failed, fall through to clipboard copy
+            console.log('Native share failed/cancelled:', shareErr)
+          }
+        }
 
-    const text = `*Almacén Casita - Comprobante de ${createdMovement.tipo}*\n` +
-      `----------------------------------------\n` +
-      `*ID MOV:* ${createdMovement.id.toUpperCase()}\n` +
-      `*FECHA:* ${dateText}\n` +
-      `*REGISTRÓ:* ${createdMovement.user?.fullName || 'Administrador'}\n` +
-      `*ESTADO:* ${createdMovement.tipo === 'Entrada' ? 'INGRESADO' : 'RETIRADO'} E INVENTARIADO\n` +
-      `----------------------------------------\n` +
-      `*PRODUCTOS REGISTRADOS:*\n` +
-      itemsText +
-      `----------------------------------------\n` +
-      `*TOTAL CAJAS:* *${totalCajas} cajas*\n` +
-      `*TOTAL CELULARES:* *${totalUnits} unidades*\n` +
-      `----------------------------------------\n` +
-      `Comprobante verificado por el administrador.`;
+        // 2. Fallback: Copy to clipboard and open WhatsApp
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              [blob.type]: blob
+            })
+          ])
+          toast.success('¡Imagen copiada al portapapeles! Abre WhatsApp y presiona Pegar (Ctrl+V) para enviarla.')
+        } catch (clipErr) {
+          console.error('Clipboard copy failed:', clipErr)
+          toast.info('No se pudo copiar automáticamente. Descarga el PNG e insértalo en WhatsApp.')
+        }
 
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
-    window.open(whatsappUrl, '_blank')
+        const whatsappUrl = `https://api.whatsapp.com/send`
+        window.open(whatsappUrl, '_blank')
+      }, 'image/png')
+    } catch (err) {
+      toast.error('Error al intentar compartir el comprobante.')
+      console.error(err)
+    }
   }
 
   const onSubmit = async (e: React.FormEvent) => {

@@ -277,41 +277,54 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     toast.success('Imagen del voucher descargada con éxito.')
   }
 
-  // Share Voucher via WhatsApp (Formatted text summary)
-  const handleWhatsAppShare = () => {
-    if (!selectedRequest) return
-    const dateText = new Date(selectedRequest.fecha).toLocaleString()
+  // Share Voucher via WhatsApp (PNG Image or Clipboard)
+  const handleWhatsAppShare = async () => {
+    if (!canvasRef.current || !selectedRequest) return
+    
+    try {
+      canvasRef.current.toBlob(async (blob) => {
+        if (!blob) {
+          toast.error('No se pudo generar la imagen del comprobante.')
+          return
+        }
 
-    let itemsText = ''
-    let totalCajas = 0
-    let totalUnits = 0
+        const file = new File([blob], `Vale_Entrega_${selectedRequest.id.toUpperCase()}.png`, { type: 'image/png' })
 
-    selectedRequest.items.forEach((item, idx) => {
-      const units = item.cantidad * item.unidades_por_caja
-      totalCajas += item.cantidad
-      totalUnits += units
-      itemsText += `${idx + 1}. *[${item.codigo}] ${item.nombre}*\n` +
-        `   Color: ${item.color} | Memoria: ${item.capacidad}\n` +
-        `   Cantidad: *${item.cantidad} cajas* (${units} celulares)\n`
-    })
+        // 1. Try Web Share API (mainly for mobile devices)
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: 'Vale de Entrega',
+              text: 'Almacén Casita - Vale de Entrega'
+            })
+            return
+          } catch (shareErr) {
+            // User cancelled or sharing failed, fall through to clipboard copy
+            console.log('Native share failed/cancelled:', shareErr)
+          }
+        }
 
-    const text = `*Almacén Casita - Vale de Entrega*\n` +
-      `----------------------------------------\n` +
-      `*ID VALE:* ${selectedRequest.id.toUpperCase()}\n` +
-      `*FECHA:* ${dateText}\n` +
-      `*SOLICITANTE:* ${selectedRequest.requesterName}\n` +
-      `*ESTADO:* APROBADO Y ENTREGADO\n` +
-      `----------------------------------------\n` +
-      `*PRODUCTOS ENTREGADOS:*\n` +
-      itemsText +
-      `----------------------------------------\n` +
-      `*TOTAL CAJAS:* *${totalCajas} cajas*\n` +
-      `*TOTAL CELULARES:* *${totalUnits} unidades*\n` +
-      `----------------------------------------\n` +
-      `Comprobante aprobado por el administrador.`;
+        // 2. Fallback: Copy to clipboard and open WhatsApp
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              [blob.type]: blob
+            })
+          ])
+          toast.success('¡Imagen copiada al portapapeles! Abre WhatsApp y presiona Pegar (Ctrl+V) para enviarla.')
+        } catch (clipErr) {
+          console.error('Clipboard copy failed:', clipErr)
+          toast.info('No se pudo copiar automáticamente. Descarga el PNG e insértalo en WhatsApp.')
+        }
 
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
-    window.open(whatsappUrl, '_blank')
+        const whatsappUrl = `https://api.whatsapp.com/send`
+        window.open(whatsappUrl, '_blank')
+      }, 'image/png')
+    } catch (err) {
+      toast.error('Error al intentar compartir el comprobante.')
+      console.error(err)
+    }
   }
 
   const handleUserApprove = (userId: string) => {

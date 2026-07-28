@@ -250,31 +250,53 @@ export function VoucherButton({ movement, variant = 'ghost', className, children
     toast.success('Voucher descargado correctamente.')
   }
 
-  const handleWhatsAppShare = () => {
-    const dateText = new Date(movement.fecha).toLocaleString()
-    const prod = movement.products
-    if (!prod) return
+  const handleWhatsAppShare = async () => {
+    if (!canvasRef.current || !movement) return
+    
+    try {
+      canvasRef.current.toBlob(async (blob) => {
+        if (!blob) {
+          toast.error('No se pudo generar la imagen del comprobante.')
+          return
+        }
 
-    const totalUnits = movement.cantidad * prod.unidades_por_caja
-    const text = `*Almacén Casita - Comprobante de ${movement.tipo}*\n` +
-      `----------------------------------------\n` +
-      `*ID MOV:* ${movement.id.toUpperCase()}\n` +
-      `*FECHA:* ${dateText}\n` +
-      `*REGISTRÓ:* ${movement.profiles?.full_name || 'Administrador'}\n` +
-      `*ESTADO:* ${movement.tipo === 'Entrada' ? 'INGRESADO' : 'RETIRADO'} E INVENTARIADO\n` +
-      `----------------------------------------\n` +
-      `*PRODUCTO:*\n` +
-      `1. *[${prod.codigo}] ${prod.nombre}*\n` +
-      `   Color: ${prod.color} | Memoria: ${prod.capacidad}\n` +
-      `   Cantidad: *${movement.cantidad} cajas* (${totalUnits} celulares)\n` +
-      `----------------------------------------\n` +
-      `*TOTAL CAJAS:* *${movement.cantidad} cajas*\n` +
-      `*TOTAL CELULARES:* *${totalUnits} unidades*\n` +
-      `----------------------------------------\n` +
-      `Comprobante verificado por el administrador.`;
+        const file = new File([blob], `Voucher_${movement.id.toUpperCase()}.png`, { type: 'image/png' })
 
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
-    window.open(whatsappUrl, '_blank')
+        // 1. Try Web Share API (mainly for mobile devices)
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: `Comprobante de ${movement.tipo}`,
+              text: `Almacén Casita - Comprobante de ${movement.tipo}`
+            })
+            return
+          } catch (shareErr) {
+            // User cancelled or sharing failed, fall through to clipboard copy
+            console.log('Native share failed/cancelled:', shareErr)
+          }
+        }
+
+        // 2. Fallback: Copy to clipboard and open WhatsApp
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              [blob.type]: blob
+            })
+          ])
+          toast.success('¡Imagen copiada al portapapeles! Abre WhatsApp y presiona Pegar (Ctrl+V) para enviarla.')
+        } catch (clipErr) {
+          console.error('Clipboard copy failed:', clipErr)
+          toast.info('No se pudo copiar automáticamente. Descarga el PNG e insértalo en WhatsApp.')
+        }
+
+        const whatsappUrl = `https://api.whatsapp.com/send`
+        window.open(whatsappUrl, '_blank')
+      }, 'image/png')
+    } catch (err) {
+      toast.error('Error al intentar compartir el comprobante.')
+      console.error(err)
+    }
   }
 
   const triggerElement = (children as React.ReactElement) || (
