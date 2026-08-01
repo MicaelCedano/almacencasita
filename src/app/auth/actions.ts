@@ -7,6 +7,8 @@ import { cookies } from 'next/headers'
 import { isSupabaseConfigured, readLocalDB, writeLocalDB } from '@/lib/db'
 import crypto from 'crypto'
 
+const SESSION_MAX_AGE = 60 * 60 * 24 * 365 // 1 year (in seconds)
+
 function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(password).digest('hex')
 }
@@ -39,7 +41,7 @@ export async function login(state: unknown, formData: { username: string; passwo
     }), {
       path: '/',
       httpOnly: true,
-      maxAge: 60 * 60 * 24 // 1 day
+      maxAge: SESSION_MAX_AGE
     })
 
     revalidatePath('/', 'layout')
@@ -78,7 +80,7 @@ export async function login(state: unknown, formData: { username: string; passwo
   }), {
     path: '/',
     httpOnly: true,
-    maxAge: 60 * 60 * 24
+    maxAge: SESSION_MAX_AGE
   })
 
   revalidatePath('/', 'layout')
@@ -132,7 +134,7 @@ export async function signup(
     }), {
       path: '/',
       httpOnly: true,
-      maxAge: 60 * 60 * 24
+      maxAge: SESSION_MAX_AGE
     })
 
     revalidatePath('/', 'layout')
@@ -190,7 +192,7 @@ export async function signup(
   }), {
     path: '/',
     httpOnly: true,
-    maxAge: 60 * 60 * 24
+    maxAge: SESSION_MAX_AGE
   })
 
   revalidatePath('/', 'layout')
