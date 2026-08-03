@@ -25,6 +25,7 @@ interface RequestRecord {
   fecha: string;
   items: RequestItemDetails[];
   requesterName: string;
+  tipo: 'Entrada' | 'Salida';
 }
 
 interface UserRecord {
@@ -92,6 +93,7 @@ export default async function SolicitudesPage() {
         estado: r.estado,
         fecha: r.fecha,
         items: mappedItems,
+        tipo: r.tipo || 'Salida',
         requesterName: user ? user.fullName : 'Almacenista'
       } as RequestRecord
     })
@@ -140,6 +142,7 @@ export default async function SolicitudesPage() {
         estado,
         fecha,
         items,
+        tipo,
         profiles (
           full_name
         )
@@ -161,6 +164,7 @@ export default async function SolicitudesPage() {
         estado: 'Pendiente' | 'Aprobado' | 'Rechazado';
         fecha: string;
         items: { producto_id: string; cantidad: number }[];
+        tipo: 'Entrada' | 'Salida';
         profiles: {
           full_name: string;
         } | null;
@@ -186,6 +190,7 @@ export default async function SolicitudesPage() {
           estado: r.estado,
           fecha: r.fecha,
           items: mappedItems,
+          tipo: r.tipo || 'Salida',
           requesterName: r.profiles ? r.profiles.full_name : 'Almacenista'
         }
       })

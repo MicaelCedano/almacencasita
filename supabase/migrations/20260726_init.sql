@@ -43,6 +43,7 @@ create table public.requests (
   motivo text not null,
   usuario_id uuid references public.profiles(id) on delete cascade not null,
   estado text not null default 'Pendiente' check (estado in ('Pendiente', 'Aprobado', 'Rechazado')),
+  tipo text not null default 'Salida' check (tipo in ('Entrada', 'Salida')),
   fecha timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

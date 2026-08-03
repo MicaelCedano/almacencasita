@@ -533,11 +533,14 @@ export async function deleteUser(userId: string) {
 export async function createWithdrawalRequest(formData: {
   items: { producto_id: string; cantidad: number }[];
   motivo: string;
+  tipo?: 'Entrada' | 'Salida';
 }) {
   const isLocal = !isSupabaseConfigured()
   const cookieStore = await cookies()
   const user = getSessionUser(cookieStore)
   if (!user) return { success: false, error: 'No autenticado' }
+
+  const tipo = formData.tipo || 'Salida'
 
   if (isLocal) {
     const db = readLocalDB()
@@ -554,6 +557,7 @@ export async function createWithdrawalRequest(formData: {
       motivo: formData.motivo.trim(),
       usuario_id: user.id,
       estado: 'Pendiente',
+      tipo,
       fecha: new Date().toISOString()
     })
 
@@ -571,7 +575,8 @@ export async function createWithdrawalRequest(formData: {
       items: formData.items,
       motivo: formData.motivo,
       usuario_id: user.id,
-      estado: 'Pendiente'
+      estado: 'Pendiente',
+      tipo
     })
 
   if (error) return { success: false, error: error.message }
@@ -593,11 +598,15 @@ export async function approveWithdrawalRequest(requestId: string) {
     if (!request) return { success: false, error: 'Solicitud no encontrada.' }
     if (request.estado !== 'Pendiente') return { success: false, error: 'La solicitud ya fue procesada.' }
 
-    for (const item of request.items) {
-      const product = db.products.find((p) => p.id === item.producto_id)
-      if (!product) return { success: false, error: 'Producto no encontrado.' }
-      if (product.cajas < item.cantidad) {
-        return { success: false, error: `Stock insuficiente para ${product.nombre} (Solicitado: ${item.cantidad} cajas, Disponible: ${product.cajas} cajas).` }
+    const isEntrada = request.tipo === 'Entrada'
+
+    if (!isEntrada) {
+      for (const item of request.items) {
+        const product = db.products.find((p) => p.id === item.producto_id)
+        if (!product) return { success: false, error: 'Producto no encontrado.' }
+        if (product.cajas < item.cantidad) {
+          return { success: false, error: `Stock insuficiente para ${product.nombre} (Solicitado: ${item.cantidad} cajas, Disponible: ${product.cajas} cajas).` }
+        }
       }
     }
 
@@ -606,7 +615,11 @@ export async function approveWithdrawalRequest(requestId: string) {
 
     for (const item of request.items) {
       const product = db.products.find((p) => p.id === item.producto_id)!
-      product.cajas -= item.cantidad
+      if (isEntrada) {
+        product.cajas += item.cantidad
+      } else {
+        product.cajas -= item.cantidad
+      }
       product.cantidad = product.cajas * product.unidades_por_caja
       product.fecha_actualizacion = new Date().toISOString()
 
@@ -614,7 +627,7 @@ export async function approveWithdrawalRequest(requestId: string) {
         id: 'mov_' + Math.random().toString(36).substr(2, 9),
         producto_id: item.producto_id,
         cantidad: item.cantidad,
-        tipo: 'Salida' as const,
+        tipo: isEntrada ? 'Entrada' : 'Salida',
         motivo: `Aprobado - Solicitud de ${requesterName}. Motivo: ${request.motivo}`,
         usuario_id: request.usuario_id,
         fecha: new Date().toISOString()
@@ -634,25 +647,28 @@ export async function approveWithdrawalRequest(requestId: string) {
 
   const { data: request, error: fetchErr } = await supabase
     .from('requests')
-    .select('items, motivo, usuario_id')
+    .select('items, motivo, usuario_id, tipo')
     .eq('id', requestId)
     .single()
 
   if (fetchErr || !request) return { success: false, error: 'Solicitud no encontrada.' }
 
   const items = request.items as { producto_id: string; cantidad: number }[]
+  const isEntrada = request.tipo === 'Entrada'
 
-  // Verify stock
-  for (const item of items) {
-    const { data: product } = await supabase
-      .from('products')
-      .select('nombre, cajas')
-      .eq('id', item.producto_id)
-      .single()
+  // Verify stock for Salidas
+  if (!isEntrada) {
+    for (const item of items) {
+      const { data: product } = await supabase
+        .from('products')
+        .select('nombre, cajas')
+        .eq('id', item.producto_id)
+        .single()
 
-    if (!product) return { success: false, error: 'Producto no encontrado.' }
-    if (product.cajas < item.cantidad) {
-      return { success: false, error: `Stock insuficiente para ${product.nombre} (Solicitado: ${item.cantidad} cajas, Disponible: ${product.cajas} cajas).` }
+      if (!product) return { success: false, error: 'Producto no encontrado.' }
+      if (product.cajas < item.cantidad) {
+        return { success: false, error: `Stock insuficiente para ${product.nombre} (Solicitado: ${item.cantidad} cajas, Disponible: ${product.cajas} cajas).` }
+      }
     }
   }
 
@@ -680,7 +696,7 @@ export async function approveWithdrawalRequest(requestId: string) {
       .insert({
         producto_id: item.producto_id,
         cantidad: item.cantidad,
-        tipo: 'Salida',
+        tipo: isEntrada ? 'Entrada' : 'Salida',
         motivo: `Aprobado - Solicitud de ${requesterName}. Motivo: ${request.motivo}`,
         usuario_id: request.usuario_id
       })

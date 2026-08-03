@@ -41,6 +41,7 @@ export interface LocalRequest {
   usuario_id: string;
   estado: 'Pendiente' | 'Aprobado' | 'Rechazado';
   fecha: string;
+  tipo: 'Entrada' | 'Salida';
 }
 
 export interface LocalDB {

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useCallback } from 'react'
-import { createMovementsBulk } from '@/app/dashboard/actions'
+import { createMovementsBulk, createWithdrawalRequest } from '@/app/dashboard/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 
 interface MovementDialogProps {
   tipo: 'Entrada' | 'Salida';
+  role?: 'admin' | 'empleado';
   products: {
     id: string;
     codigo: string;
@@ -24,7 +25,7 @@ interface MovementDialogProps {
   }[];
 }
 
-export function MovementDialog({ tipo, products }: MovementDialogProps) {
+export function MovementDialog({ tipo, role = 'admin', products }: MovementDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   
@@ -360,26 +361,44 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
 
     setLoading(true)
     try {
-      const res = await createMovementsBulk({
-        tipo,
-        motivo: motivo.trim() || 'Sin descripción',
-        items: selectedItems.map(item => ({
-          producto_id: item.product.id,
-          cantidad: Number(item.cantidad)
-        }))
-      })
+      if (role === 'empleado') {
+        const res = await createWithdrawalRequest({
+          items: selectedItems.map(item => ({
+            producto_id: item.product.id,
+            cantidad: Number(item.cantidad)
+          })),
+          motivo: motivo.trim() || 'Sin descripción',
+          tipo
+        })
 
-      if (res.success) {
-        toast.success(`Movimiento de ${tipo} registrado con éxito.`)
-        
-        if (tipo === 'Entrada' && res.movementBatch) {
-          setCreatedMovement(res.movementBatch)
-          setVoucherOpen(true)
+        if (res.success) {
+          toast.success(`Solicitud de ${tipo} enviada con éxito al administrador.`)
+          handleOpenChange(false)
+        } else {
+          toast.error(res.error || 'Error al enviar la solicitud.')
         }
-        
-        handleOpenChange(false)
       } else {
-        toast.error(res.error || 'Error al registrar movimiento.')
+        const res = await createMovementsBulk({
+          tipo,
+          motivo: motivo.trim() || 'Sin descripción',
+          items: selectedItems.map(item => ({
+            producto_id: item.product.id,
+            cantidad: Number(item.cantidad)
+          }))
+        })
+
+        if (res.success) {
+          toast.success(`Movimiento de ${tipo} registrado con éxito.`)
+          
+          if (tipo === 'Entrada' && res.movementBatch) {
+            setCreatedMovement(res.movementBatch)
+            setVoucherOpen(true)
+          }
+          
+          handleOpenChange(false)
+        } else {
+          toast.error(res.error || 'Error al registrar movimiento.')
+        }
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Ocurrió un error inesperado.')
@@ -389,7 +408,12 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
   }
 
   const triggerElement = (
-    tipo === 'Entrada' ? (
+    role === 'empleado' ? (
+      <Button className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-semibold gap-2">
+        <PlusCircle className="w-4 h-4" />
+        <span>Solicitar Entrada</span>
+      </Button>
+    ) : tipo === 'Entrada' ? (
       <Button className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-semibold gap-2">
         <PlusCircle className="w-4 h-4" />
         <span>Nueva Entrada</span>
@@ -408,11 +432,15 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
         <DialogTrigger render={triggerElement} />
         <DialogContent className="bg-zinc-900 border border-zinc-800 text-zinc-100 max-w-md">
           <DialogHeader>
-            <DialogTitle>Registrar {tipo} de Mercancía</DialogTitle>
+            <DialogTitle>{role === 'empleado' ? 'Solicitar' : 'Registrar'} {tipo} de Mercancía</DialogTitle>
             <DialogDescription className="text-zinc-400 text-xs">
-              {tipo === 'Entrada'
-                ? 'Agrega stock de múltiples modelos de celulares al almacén en un solo lote.'
-                : 'Retira stock de múltiples modelos de celulares del almacén en un solo lote.'}
+              {role === 'empleado'
+                ? (tipo === 'Entrada'
+                  ? 'Envía una solicitud al administrador para ingresar stock en un solo lote.'
+                  : 'Envía una solicitud al administrador para retirar stock en un solo lote.')
+                : (tipo === 'Entrada'
+                  ? 'Agrega stock de múltiples modelos de celulares al almacén en un solo lote.'
+                  : 'Retira stock de múltiples modelos de celulares del almacén en un solo lote.')}
             </DialogDescription>
           </DialogHeader>
 
@@ -559,7 +587,7 @@ export function MovementDialog({ tipo, products }: MovementDialogProps) {
                     Procesando...
                   </>
                 ) : (
-                  `Registrar ${tipo}`
+                  role === 'empleado' ? `Enviar Solicitud de ${tipo}` : `Registrar ${tipo}`
                 )}
               </Button>
             </DialogFooter>

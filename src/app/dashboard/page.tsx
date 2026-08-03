@@ -25,6 +25,7 @@ interface RequestRecord {
   fecha: string;
   items: RequestItemDetails[];
   requesterName: string;
+  tipo: 'Entrada' | 'Salida';
 }
 
 export default async function DashboardPage() {
@@ -83,6 +84,7 @@ export default async function DashboardPage() {
         estado: r.estado,
         fecha: r.fecha,
         items: mappedItems,
+        tipo: r.tipo || 'Salida',
         requesterName: requester ? requester.fullName : 'Almacenista'
       }
     })
@@ -144,6 +146,7 @@ export default async function DashboardPage() {
       estado,
       fecha,
       items,
+      tipo,
       profiles (
         full_name
       )
@@ -170,6 +173,7 @@ export default async function DashboardPage() {
       estado: 'Pendiente' | 'Aprobado' | 'Rechazado';
       fecha: string;
       items: { producto_id: string; cantidad: number }[];
+      tipo: 'Entrada' | 'Salida';
       profiles: { full_name: string } | null;
     }[]).map((r) => {
       const mappedItems = r.items.map((item) => {
@@ -193,6 +197,7 @@ export default async function DashboardPage() {
         estado: r.estado,
         fecha: r.fecha,
         items: mappedItems,
+        tipo: r.tipo || 'Salida',
         requesterName: r.profiles ? r.profiles.full_name : 'Almacenista'
       }
     })

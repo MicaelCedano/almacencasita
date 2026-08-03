@@ -35,6 +35,7 @@ interface RequestRecord {
   fecha: string;
   items: RequestItemDetails[];
   requesterName: string;
+  tipo: 'Entrada' | 'Salida';
 }
 
 interface UserRecord {
@@ -52,7 +53,7 @@ interface RequestsManagerProps {
 }
 
 export default function RequestsManager({ requests, pendingUsers, allUsers = [] }: RequestsManagerProps) {
-  const [activeTab, setActiveTab] = useState<'exits' | 'users' | 'all-users'>('exits')
+  const [activeTab, setActiveTab] = useState<'exits' | 'entries' | 'users' | 'all-users'>('exits')
   const [isPending, startTransition] = useTransition()
 
   // Voucher modal states
@@ -64,6 +65,10 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [selectedUserForPassword, setSelectedUserForPassword] = useState<UserRecord | null>(null)
   const [newPassword, setNewPassword] = useState('')
+
+  // Filter requests
+  const exitsRequests = requests.filter(r => r.tipo === 'Salida' || !r.tipo)
+  const entriesRequests = requests.filter(r => r.tipo === 'Entrada')
 
   // Draw voucher helper function
   const drawVoucher = (canvas: HTMLCanvasElement | null) => {
@@ -94,8 +99,10 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     ctx.roundRect(12, 12, 476, 90, [12, 12, 0, 0])
     ctx.fill()
 
+    const isEntrada = selectedRequest.tipo === 'Entrada'
+
     // Header Title
-    ctx.fillStyle = '#10b981'
+    ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
     ctx.font = 'bold 20px system-ui, -apple-system, sans-serif'
     ctx.textAlign = 'center'
     ctx.fillText('ALMACÉN CASITA', 250, 48)
@@ -103,7 +110,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     // Subtitle
     ctx.fillStyle = '#94a3b8'
     ctx.font = '500 12px system-ui, -apple-system, sans-serif'
-    ctx.fillText('COMPROBANTE DE ENTREGA', 250, 72)
+    ctx.fillText(isEntrada ? 'COMPROBANTE DE ENTRADA' : 'COMPROBANTE DE ENTREGA', 250, 72)
 
     // Thin separator line
     ctx.strokeStyle = '#1e293b'
@@ -120,7 +127,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     
     ctx.fillText('ID VALE', 40, 126)
     ctx.fillText('FECHA Y HORA', 260, 126)
-    ctx.fillText('ENTREGA A', 40, 174)
+    ctx.fillText(isEntrada ? 'SOLICITADO POR' : 'ENTREGA A', 40, 174)
     ctx.fillText('ESTADO', 260, 174)
 
     ctx.font = '500 11px system-ui, -apple-system, sans-serif'
@@ -141,9 +148,23 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     ctx.fillText(selectedRequest.requesterName || 'Almacenista', 40, 192)
 
     // Status badge
-    const badgeText = 'APROBADO E INVENTARIADO'
-    const badgeBg = 'rgba(16, 185, 129, 0.12)'
-    const badgeTextCol = '#34d399'
+    let badgeText = ''
+    let badgeBg = ''
+    let badgeTextCol = ''
+
+    if (selectedRequest.estado === 'Aprobado') {
+      badgeText = isEntrada ? 'INGRESADO E INVENTARIADO' : 'RETIRADO E INVENTARIADO'
+      badgeBg = 'rgba(16, 185, 129, 0.12)'
+      badgeTextCol = '#34d399'
+    } else if (selectedRequest.estado === 'Rechazado') {
+      badgeText = 'RECHAZADO'
+      badgeBg = 'rgba(239, 68, 68, 0.12)'
+      badgeTextCol = '#f87171'
+    } else {
+      badgeText = 'PENDIENTE DE APROBACIÓN'
+      badgeBg = 'rgba(245, 158, 11, 0.12)'
+      badgeTextCol = '#fbbf24'
+    }
     
     ctx.fillStyle = badgeBg
     ctx.beginPath()
@@ -195,7 +216,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
 
       // 3. Quantity
       ctx.textAlign = 'right'
-      ctx.fillStyle = '#10b981'
+      ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
       ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
       ctx.fillText(`${item.cantidad} cajas`, 458, y + 8)
       ctx.textAlign = 'left' // reset
@@ -219,7 +240,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     ctx.fillText('TOTAL CAJAS:', 40, y)
     
     ctx.textAlign = 'right'
-    ctx.fillStyle = '#10b981'
+    ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
     ctx.font = 'bold 13px system-ui, -apple-system, sans-serif'
     ctx.fillText(`${totalCajas} cajas`, 458, y)
     ctx.textAlign = 'left' // reset
@@ -272,7 +293,8 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     const url = canvasRef.current.toDataURL('image/png')
     const link = document.createElement('a')
     link.href = url
-    link.download = `Vale_Entrega_${selectedRequest.id.toUpperCase()}.png`
+    const suffix = selectedRequest.tipo === 'Entrada' ? 'Entrada' : 'Entrega'
+    link.download = `Vale_${suffix}_${selectedRequest.id.toUpperCase()}.png`
     link.click()
     toast.success('Imagen del voucher descargada con éxito.')
   }
@@ -288,15 +310,16 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
           return
         }
 
-        const file = new File([blob], `Vale_Entrega_${selectedRequest.id.toUpperCase()}.png`, { type: 'image/png' })
+        const suffix = selectedRequest.tipo === 'Entrada' ? 'Entrada' : 'Entrega'
+        const file = new File([blob], `Vale_${suffix}_${selectedRequest.id.toUpperCase()}.png`, { type: 'image/png' })
 
         // 1. Try Web Share API (mainly for mobile devices)
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({
               files: [file],
-              title: 'Vale de Entrega',
-              text: 'Almacén Casita - Vale de Entrega'
+              title: `Vale de ${suffix}`,
+              text: `Almacén Casita - Vale de ${suffix}`
             })
             return
           } catch (shareErr) {
@@ -347,7 +370,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     startTransition(async () => {
       const res = await approveWithdrawalRequest(reqId)
       if (res.success) {
-        toast.success('Solicitud aprobada. Inventario descontado.')
+        toast.success('Solicitud aprobada e inventario actualizado.')
         const req = requests.find(r => r.id === reqId)
         if (req) {
           setSelectedRequest(req)
@@ -388,10 +411,251 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
     })
   }
 
+  const renderRequestsList = (requestsList: RequestRecord[], noRequestsText: string) => {
+    return (
+      <div className="space-y-4">
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-lg border border-zinc-800 bg-zinc-950/40 overflow-hidden">
+          <Table>
+            <TableHeader className="bg-zinc-950/80">
+              <TableRow className="border-b border-zinc-800 hover:bg-transparent">
+                <TableHead className="text-zinc-400 py-3 text-xs">Fecha</TableHead>
+                <TableHead className="text-zinc-400 py-3 text-xs">Almacenista</TableHead>
+                <TableHead className="text-zinc-400 py-3 text-xs">Productos en la Solicitud</TableHead>
+                <TableHead className="text-zinc-400 py-3 text-xs">Total Cajas</TableHead>
+                <TableHead className="text-zinc-400 py-3 text-xs">Motivo</TableHead>
+                <TableHead className="text-zinc-400 py-3 text-xs">Estado</TableHead>
+                <TableHead className="text-zinc-400 py-3 text-xs text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {requestsList.length > 0 ? (
+                requestsList.map((req) => {
+                  const isPendingReq = req.estado === 'Pendiente'
+                  const totalCajas = req.items?.reduce((sum, i) => sum + i.cantidad, 0) || 0
+                  return (
+                    <TableRow key={req.id} className="border-b border-zinc-800 hover:bg-zinc-900/20 transition-colors">
+                      <TableCell className="py-4 text-xs font-mono text-zinc-400">
+                        {new Date(req.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </TableCell>
+                      <TableCell className="py-4 text-xs font-medium text-zinc-200">
+                        {req.requesterName}
+                      </TableCell>
+                      <TableCell className="py-4 text-xs max-w-sm">
+                        <div className="flex flex-col gap-1.5">
+                          {req.items?.map((item, idx) => (
+                            <div key={idx} className="text-xs bg-zinc-900/60 border border-zinc-850 p-2 rounded-lg">
+                              <span className="font-semibold text-zinc-150 block">
+                                [{item.codigo}] {item.nombre}
+                              </span>
+                              <span className="text-[10px] text-zinc-500 font-mono">
+                                Color: {item.color} | Memoria: {item.capacidad} | *{item.cantidad} cajas*
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4 text-xs font-mono font-bold text-zinc-300">
+                        {totalCajas} cajas
+                      </TableCell>
+                      <TableCell className="py-4 text-xs text-zinc-400 max-w-[150px] truncate">
+                        {req.motivo}
+                      </TableCell>
+                      <TableCell className="py-4 text-xs">
+                        <Badge
+                          variant="outline"
+                          className={`uppercase text-[9px] font-bold px-2 py-0.5 rounded ${
+                            req.estado === 'Aprobado'
+                              ? 'border-emerald-500/25 bg-emerald-500/5 text-emerald-400'
+                              : req.estado === 'Rechazado'
+                              ? 'border-red-500/25 bg-red-500/5 text-red-400'
+                              : 'border-amber-500/25 bg-amber-500/5 text-amber-400'
+                          }`}
+                        >
+                          {req.estado}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-4 text-xs text-right whitespace-nowrap">
+                        {isPendingReq ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedRequest(req)
+                                setVoucherOpen(true)
+                              }}
+                              className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
+                              title="Ver Vale Pendiente"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={isPending}
+                              onClick={() => handleRequestApprove(req.id)}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-semibold h-8 px-2.5 mr-1"
+                            >
+                              <Check className="w-3.5 h-3.5 mr-1" /> Aprobar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={isPending}
+                              onClick={() => handleRequestReject(req.id)}
+                              className="border-zinc-800 text-red-400 hover:text-red-300 hover:bg-red-500/5 h-8 px-2.5"
+                            >
+                              <X className="w-3.5 h-3.5 mr-1" /> Rechazar
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedRequest(req)
+                              setVoucherOpen(true)
+                            }}
+                            className="text-zinc-300 hover:text-emerald-400 hover:bg-zinc-800/50 h-8 gap-1.5"
+                          >
+                            <FileText className="w-3.5 h-3.5" /> Vale / Voucher
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32 text-center text-zinc-500">
+                    {noRequestsText}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile Card list */}
+        <div className="grid grid-cols-1 gap-4 md:hidden">
+          {requestsList.length > 0 ? (
+            requestsList.map((req) => {
+              const isPendingReq = req.estado === 'Pendiente'
+              const totalCajas = req.items?.reduce((sum, i) => sum + i.cantidad, 0) || 0
+              return (
+                <div key={req.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[9px] font-mono text-zinc-500">
+                        {new Date(req.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <h4 className="text-xs font-bold text-zinc-300 mt-0.5">Solicitó: {req.requesterName}</h4>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`uppercase text-[8px] font-bold px-1.5 py-0.5 rounded ${
+                        req.estado === 'Aprobado'
+                          ? 'border-emerald-500/25 bg-emerald-500/5 text-emerald-400'
+                          : req.estado === 'Rechazado'
+                          ? 'border-red-500/25 bg-red-500/5 text-red-400'
+                          : 'border-amber-500/25 bg-amber-500/5 text-amber-400'
+                      }`}
+                    >
+                      {req.estado}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider">Celulares Pedidos:</span>
+                    {req.items?.map((item, idx) => (
+                      <div key={idx} className="bg-zinc-950/40 border border-zinc-900 rounded-lg p-2.5 text-xs">
+                        <div className="font-semibold text-zinc-200">{item.nombre}</div>
+                        <div className="text-[10px] text-zinc-500 font-mono">
+                          [{item.codigo}] {item.color} | {item.capacidad}
+                        </div>
+                        <div className="text-right text-[10px] text-zinc-300 font-mono mt-1 font-bold">
+                          Cantidad: {item.cantidad} cajas
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs font-mono py-1 border-y border-zinc-900/60">
+                    <span className="text-zinc-500">Total de Cajas:</span>
+                    <span className="text-zinc-200 font-bold">{totalCajas} cajas</span>
+                  </div>
+
+                  {req.motivo && (
+                    <div className="text-[10px] text-zinc-400 flex items-start gap-1">
+                      <ClipboardList className="w-3.5 h-3.5 text-zinc-650 shrink-0 mt-0.5" />
+                      <span>Motivo: {req.motivo}</span>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2 justify-end">
+                    {isPendingReq ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedRequest(req)
+                            setVoucherOpen(true)
+                          }}
+                          className="text-zinc-400 hover:text-zinc-200 h-9 px-2"
+                          title="Ver Vale"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={isPending}
+                          onClick={() => handleRequestApprove(req.id)}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-semibold h-9 px-3 flex-1 justify-center"
+                        >
+                          <Check className="w-3.5 h-3.5 mr-1" /> Aprobar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={isPending}
+                          onClick={() => handleRequestReject(req.id)}
+                          className="border-zinc-800 text-red-400 hover:text-red-300 hover:bg-red-500/5 h-9 px-3 flex-1 justify-center"
+                        >
+                          <X className="w-3.5 h-3.5 mr-1" /> Rechazar
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedRequest(req)
+                          setVoucherOpen(true)
+                        }}
+                        className="border-zinc-800 text-zinc-300 hover:text-emerald-400 h-9 px-3 w-full justify-center gap-1.5"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> Ver Vale / Comprobante
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="p-8 text-center text-zinc-500 border border-zinc-800 bg-zinc-950/40 rounded-xl text-xs">
+              {noRequestsText}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Tabs */}
-      <div className="flex border-b border-zinc-800 max-w-lg overflow-x-auto">
+      <div className="flex border-b border-zinc-800 max-w-2xl overflow-x-auto">
         <button
           onClick={() => setActiveTab('exits')}
           className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap px-4 ${
@@ -400,7 +664,17 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
               : 'border-transparent text-zinc-500 hover:text-zinc-300'
           }`}
         >
-          Salidas de Mercancía
+          Salidas de Mercancía ({exitsRequests.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('entries')}
+          className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap px-4 ${
+            activeTab === 'entries'
+              ? 'border-emerald-500 text-zinc-100'
+              : 'border-transparent text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          Entradas de Mercancía ({entriesRequests.length})
         </button>
         <button
           onClick={() => setActiveTab('users')}
@@ -425,225 +699,10 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
       </div>
 
       {/* Tab 1: Exits Requests */}
-      {activeTab === 'exits' && (
-        <div className="space-y-4">
-          
-          {/* Desktop Table View */}
-          <div className="hidden md:block rounded-lg border border-zinc-800 bg-zinc-950/40 overflow-hidden">
-            <Table>
-              <TableHeader className="bg-zinc-950/80">
-                <TableRow className="border-b border-zinc-800 hover:bg-transparent">
-                  <TableHead className="text-zinc-400 py-3 text-xs">Fecha</TableHead>
-                  <TableHead className="text-zinc-400 py-3 text-xs">Almacenista</TableHead>
-                  <TableHead className="text-zinc-400 py-3 text-xs">Productos en la Solicitud</TableHead>
-                  <TableHead className="text-zinc-400 py-3 text-xs">Total Cajas</TableHead>
-                  <TableHead className="text-zinc-400 py-3 text-xs">Motivo</TableHead>
-                  <TableHead className="text-zinc-400 py-3 text-xs">Estado</TableHead>
-                  <TableHead className="text-zinc-400 py-3 text-xs text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {requests.length > 0 ? (
-                  requests.map((req) => {
-                    const isPendingReq = req.estado === 'Pendiente'
-                    const totalCajas = req.items?.reduce((sum, i) => sum + i.cantidad, 0) || 0
-                    return (
-                      <TableRow key={req.id} className="border-b border-zinc-800 hover:bg-zinc-900/20 transition-colors">
-                        <TableCell className="py-4 text-xs font-mono text-zinc-400">
-                          {new Date(req.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </TableCell>
-                        <TableCell className="py-4 text-xs font-medium text-zinc-200">
-                          {req.requesterName}
-                        </TableCell>
-                        <TableCell className="py-4 text-xs max-w-sm">
-                          <div className="flex flex-col gap-1.5">
-                            {req.items?.map((item, idx) => (
-                              <div key={idx} className="text-xs bg-zinc-900/60 border border-zinc-850 p-2 rounded-lg">
-                                <span className="font-semibold text-zinc-150 block">
-                                  [{item.codigo}] {item.nombre}
-                                </span>
-                                <span className="text-[10px] text-zinc-500 font-mono">
-                                  Color: {item.color} | Memoria: {item.capacidad} | *{item.cantidad} cajas*
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 text-xs font-mono font-bold text-zinc-300">
-                          {totalCajas} cajas
-                        </TableCell>
-                        <TableCell className="py-4 text-xs text-zinc-400 max-w-[150px] truncate">
-                          {req.motivo}
-                        </TableCell>
-                        <TableCell className="py-4 text-xs">
-                          <Badge
-                            variant="outline"
-                            className={`uppercase text-[9px] font-bold px-2 py-0.5 rounded ${
-                              req.estado === 'Aprobado'
-                                ? 'border-emerald-500/25 bg-emerald-500/5 text-emerald-400'
-                                : req.estado === 'Rechazado'
-                                ? 'border-red-500/25 bg-red-500/5 text-red-400'
-                                : 'border-amber-500/25 bg-amber-500/5 text-amber-400'
-                            }`}
-                          >
-                            {req.estado}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-4 text-xs text-right whitespace-nowrap">
-                          {isPendingReq ? (
-                            <>
-                              <Button
-                                size="sm"
-                                disabled={isPending}
-                                onClick={() => handleRequestApprove(req.id)}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-semibold h-8 px-2.5 mr-1"
-                              >
-                                <Check className="w-3.5 h-3.5 mr-1" /> Aprobar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={isPending}
-                                onClick={() => handleRequestReject(req.id)}
-                                className="border-zinc-800 text-red-400 hover:text-red-300 hover:bg-red-500/5 h-8 px-2.5"
-                              >
-                                <X className="w-3.5 h-3.5 mr-1" /> Rechazar
-                              </Button>
-                            </>
-                          ) : (
-                            req.estado === 'Aprobado' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setSelectedRequest(req)
-                                  setVoucherOpen(true)
-                                }}
-                                className="text-zinc-300 hover:text-emerald-400 hover:bg-zinc-800/50 h-8 gap-1.5"
-                              >
-                                <FileText className="w-3.5 h-3.5" /> Vale / Voucher
-                              </Button>
-                            )
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center text-zinc-500">
-                      No hay solicitudes de salida registradas.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+      {activeTab === 'exits' && renderRequestsList(exitsRequests, 'No hay solicitudes de salida registradas.')}
 
-          {/* Mobile Card list */}
-          <div className="grid grid-cols-1 gap-4 md:hidden">
-            {requests.length > 0 ? (
-              requests.map((req) => {
-                const isPendingReq = req.estado === 'Pendiente'
-                const totalCajas = req.items?.reduce((sum, i) => sum + i.cantidad, 0) || 0
-                return (
-                  <div key={req.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="text-[9px] font-mono text-zinc-500">
-                          {new Date(req.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <h4 className="text-xs font-bold text-zinc-300 mt-0.5">Solicitó: {req.requesterName}</h4>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={`uppercase text-[8px] font-bold px-1.5 py-0.5 rounded ${
-                          req.estado === 'Aprobado'
-                            ? 'border-emerald-500/25 bg-emerald-500/5 text-emerald-400'
-                            : req.estado === 'Rechazado'
-                            ? 'border-red-500/25 bg-red-500/5 text-red-400'
-                            : 'border-amber-500/25 bg-amber-500/5 text-amber-400'
-                        }`}
-                      >
-                        {req.estado}
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider">Celulares Pedidos:</span>
-                      {req.items?.map((item, idx) => (
-                        <div key={idx} className="bg-zinc-950/40 border border-zinc-900 rounded-lg p-2.5 text-xs">
-                          <div className="font-semibold text-zinc-200">{item.nombre}</div>
-                          <div className="text-[10px] text-zinc-500 font-mono">
-                            [{item.codigo}] {item.color} | {item.capacidad}
-                          </div>
-                          <div className="text-right text-[10px] text-zinc-300 font-mono mt-1 font-bold">
-                            Cantidad: {item.cantidad} cajas
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs font-mono py-1 border-y border-zinc-900/60">
-                      <span className="text-zinc-500">Total de Cajas:</span>
-                      <span className="text-zinc-200 font-bold">{totalCajas} cajas</span>
-                    </div>
-
-                    {req.motivo && (
-                      <div className="text-[10px] text-zinc-400 flex items-start gap-1">
-                        <ClipboardList className="w-3.5 h-3.5 text-zinc-650 shrink-0 mt-0.5" />
-                        <span>Motivo: {req.motivo}</span>
-                      </div>
-                    )}
-
-                    <div className="flex gap-2 pt-2 justify-end">
-                      {isPendingReq ? (
-                        <>
-                          <Button
-                            size="sm"
-                            disabled={isPending}
-                            onClick={() => handleRequestApprove(req.id)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-semibold h-9 px-3 flex-1 justify-center"
-                          >
-                            <Check className="w-3.5 h-3.5 mr-1" /> Aprobar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isPending}
-                            onClick={() => handleRequestReject(req.id)}
-                            className="border-zinc-800 text-red-400 hover:text-red-300 hover:bg-red-500/5 h-9 px-3 flex-1 justify-center"
-                          >
-                            <X className="w-3.5 h-3.5 mr-1" /> Rechazar
-                          </Button>
-                        </>
-                      ) : (
-                        req.estado === 'Aprobado' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedRequest(req)
-                              setVoucherOpen(true)
-                            }}
-                            className="border-zinc-800 text-zinc-300 hover:text-emerald-400 h-9 px-3 w-full justify-center gap-1.5"
-                          >
-                            <FileText className="w-3.5 h-3.5" /> Ver Vale de Entrega
-                          </Button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )
-              })
-            ) : (
-              <div className="p-8 text-center text-zinc-500 border border-zinc-800 bg-zinc-950/40 rounded-xl text-xs">
-                No hay solicitudes de salida registradas.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Tab 1.5: Entries Requests */}
+      {activeTab === 'entries' && renderRequestsList(entriesRequests, 'No hay solicitudes de entrada registradas.')}
 
       {/* Tab 2: Pending Access requests */}
       {activeTab === 'users' && (

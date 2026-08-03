@@ -87,6 +87,7 @@ interface UserRequest {
   fecha: string;
   items: RequestItemDetails[];
   requesterName: string;
+  tipo: 'Entrada' | 'Salida';
 }
 
 function getColorBadgeStyle(colorName: string): React.CSSProperties {
@@ -242,8 +243,10 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
     ctx.roundRect(12, 12, 476, 90, [12, 12, 0, 0])
     ctx.fill()
 
+    const isEntrada = selectedRequest.tipo === 'Entrada'
+
     // Header Title
-    ctx.fillStyle = '#10b981'
+    ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
     ctx.font = 'bold 20px system-ui, -apple-system, sans-serif'
     ctx.textAlign = 'center'
     ctx.fillText('ALMACÉN CASITA', 250, 48)
@@ -251,7 +254,7 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
     // Subtitle
     ctx.fillStyle = '#94a3b8'
     ctx.font = '500 12px system-ui, -apple-system, sans-serif'
-    ctx.fillText('COMPROBANTE DE ENTREGA', 250, 72)
+    ctx.fillText(isEntrada ? 'COMPROBANTE DE ENTRADA' : 'COMPROBANTE DE ENTREGA', 250, 72)
 
     // Thin separator line
     ctx.strokeStyle = '#1e293b'
@@ -268,7 +271,7 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
     
     ctx.fillText('ID VALE', 40, 126)
     ctx.fillText('FECHA Y HORA', 260, 126)
-    ctx.fillText('ENTREGA A', 40, 174)
+    ctx.fillText(isEntrada ? 'RECIBIDO POR' : 'ENTREGA A', 40, 174)
     ctx.fillText('ESTADO', 260, 174)
 
     ctx.font = '500 11px system-ui, -apple-system, sans-serif'
@@ -289,9 +292,23 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
     ctx.fillText(selectedRequest.requesterName || 'Almacenista', 40, 192)
 
     // Status badge
-    const badgeText = 'APROBADO E INVENTARIADO'
-    const badgeBg = 'rgba(16, 185, 129, 0.12)'
-    const badgeTextCol = '#34d399'
+    let badgeText = ''
+    let badgeBg = ''
+    let badgeTextCol = ''
+
+    if (selectedRequest.estado === 'Aprobado') {
+      badgeText = isEntrada ? 'INGRESADO E INVENTARIADO' : 'RETIRADO E INVENTARIADO'
+      badgeBg = 'rgba(16, 185, 129, 0.12)'
+      badgeTextCol = '#34d399'
+    } else if (selectedRequest.estado === 'Rechazado') {
+      badgeText = 'RECHAZADO'
+      badgeBg = 'rgba(239, 68, 68, 0.12)'
+      badgeTextCol = '#f87171'
+    } else {
+      badgeText = 'PENDIENTE DE APROBACIÓN'
+      badgeBg = 'rgba(245, 158, 11, 0.12)'
+      badgeTextCol = '#fbbf24'
+    }
     
     ctx.fillStyle = badgeBg
     ctx.beginPath()
@@ -343,7 +360,7 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
 
       // 3. Quantity
       ctx.textAlign = 'right'
-      ctx.fillStyle = '#10b981'
+      ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
       ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
       ctx.fillText(`${item.cantidad} cajas`, 458, y + 8)
       ctx.textAlign = 'left' // reset
@@ -367,7 +384,7 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
     ctx.fillText('TOTAL CAJAS:', 40, y)
     
     ctx.textAlign = 'right'
-    ctx.fillStyle = '#10b981'
+    ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
     ctx.font = 'bold 13px system-ui, -apple-system, sans-serif'
     ctx.fillText(`${totalCajas} cajas`, 458, y)
     ctx.textAlign = 'left' // reset
@@ -420,7 +437,8 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
     const url = canvasRef.current.toDataURL('image/png')
     const link = document.createElement('a')
     link.href = url
-    link.download = `Vale_Entrega_${selectedRequest.id.toUpperCase()}.png`
+    const suffix = selectedRequest.tipo === 'Entrada' ? 'Entrada' : 'Entrega'
+    link.download = `Vale_${suffix}_${selectedRequest.id.toUpperCase()}.png`
     link.click()
     toast.success('Vale de entrega descargado.')
   }
@@ -436,15 +454,16 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
           return
         }
 
-        const file = new File([blob], `Vale_Entrega_${selectedRequest.id.toUpperCase()}.png`, { type: 'image/png' })
+        const suffix = selectedRequest.tipo === 'Entrada' ? 'Entrada' : 'Entrega'
+        const file = new File([blob], `Vale_${suffix}_${selectedRequest.id.toUpperCase()}.png`, { type: 'image/png' })
 
         // 1. Try Web Share API (mainly for mobile devices)
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({
               files: [file],
-              title: 'Vale de Entrega',
-              text: 'Almacén Casita - Vale de Entrega'
+              title: `Vale de ${suffix}`,
+              text: `Almacén Casita - Vale de ${suffix}`
             })
             return
           } catch (shareErr) {
@@ -784,9 +803,12 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
             <>
               <BulkImportDialog />
               <NewProductDialog />
-              <MovementDialog tipo="Entrada" products={products} />
-              <MovementDialog tipo="Salida" products={products.filter((p) => p.cajas > 0)} />
+              <MovementDialog tipo="Entrada" role="admin" products={products} />
+              <MovementDialog tipo="Salida" role="admin" products={products.filter((p) => p.cajas > 0)} />
             </>
+          )}
+          {role === 'empleado' && (
+            <MovementDialog tipo="Entrada" role="empleado" products={products} />
           )}
         </div>
       </div>
@@ -1164,9 +1186,9 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
           <div>
             <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
               <Clock className="w-4 h-4 text-emerald-400" />
-              <span>Mis Solicitudes de Salida</span>
+              <span>Mis Solicitudes de Mercancía</span>
             </h3>
-            <p className="text-[10px] text-zinc-500">Historial de vales de mercancía solicitados al administrador.</p>
+            <p className="text-[10px] text-zinc-500">Historial de vales de entrada y salida solicitados al administrador.</p>
           </div>
 
           {/* Desktop Requests Table */}
@@ -1175,6 +1197,7 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
               <TableHeader className="bg-zinc-950/80">
                 <TableRow className="border-b border-zinc-800 hover:bg-transparent">
                   <TableHead className="text-zinc-400 py-2.5 text-[10px]">Fecha</TableHead>
+                  <TableHead className="text-zinc-400 py-2.5 text-[10px]">Tipo</TableHead>
                   <TableHead className="text-zinc-400 py-2.5 text-[10px]">Productos Solicitados</TableHead>
                   <TableHead className="text-zinc-400 py-2.5 text-[10px]">Total Cajas</TableHead>
                   <TableHead className="text-zinc-400 py-2.5 text-[10px]">Motivo</TableHead>
@@ -1186,10 +1209,23 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
                 {requests.length > 0 ? (
                   requests.map((req) => {
                     const totalCajas = req.items?.reduce((s, i) => s + i.cantidad, 0) || 0
+                    const isEntrada = req.tipo === 'Entrada'
                     return (
                       <TableRow key={req.id} className="border-b border-zinc-850 hover:bg-zinc-900/10 text-xs">
                         <TableCell className="py-3 font-mono text-zinc-500 text-[10px]">
                           {new Date(req.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <Badge
+                            variant="outline"
+                            className={`uppercase text-[8px] font-bold px-1.5 py-0.5 rounded ${
+                              isEntrada
+                                ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'
+                                : 'border-blue-500/20 bg-blue-500/5 text-blue-400'
+                            }`}
+                          >
+                            {isEntrada ? 'Entrada' : 'Salida'}
+                          </Badge>
                         </TableCell>
                         <TableCell className="py-3 max-w-sm">
                           <div className="flex flex-col gap-1.5">
@@ -1222,27 +1258,25 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
                           </Badge>
                         </TableCell>
                         <TableCell className="py-3 text-right">
-                          {req.estado === 'Aprobado' && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedRequest(req)
-                                setVoucherOpen(true)
-                              }}
-                              className="text-zinc-400 hover:text-emerald-400 hover:bg-zinc-900 h-7 text-[10px] gap-1 px-2"
-                            >
-                              <FileText className="w-3 w-3" /> Ver Vale
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedRequest(req)
+                              setVoucherOpen(true)
+                            }}
+                            className="text-zinc-400 hover:text-emerald-400 hover:bg-zinc-900 h-7 text-[10px] gap-1 px-2"
+                          >
+                            <FileText className="w-3 w-3" /> Ver Vale
+                          </Button>
                         </TableCell>
                       </TableRow>
                     )
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-20 text-center text-zinc-650 text-xs">
-                      Aún no has enviado ninguna solicitud de salida.
+                    <TableCell colSpan={7} className="h-20 text-center text-zinc-650 text-xs">
+                      Aún no has enviado ninguna solicitud.
                     </TableCell>
                   </TableRow>
                 )}
@@ -1255,12 +1289,25 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
             {requests.length > 0 ? (
               requests.map((req) => {
                 const totalCajas = req.items?.reduce((s, i) => s + i.cantidad, 0) || 0
+                const isEntrada = req.tipo === 'Entrada'
                 return (
                   <div key={req.id} className="bg-zinc-950/40 border border-zinc-850 rounded-xl p-3 space-y-2 text-xs">
                     <div className="flex justify-between items-start">
-                      <span className="text-[9px] font-mono text-zinc-600">
-                        {new Date(req.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] font-mono text-zinc-600">
+                          {new Date(req.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={`w-fit uppercase text-[8px] font-bold px-1 py-0.2 rounded ${
+                            isEntrada
+                              ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'
+                              : 'border-blue-500/20 bg-blue-500/5 text-blue-400'
+                          }`}
+                        >
+                          {isEntrada ? 'Entrada' : 'Salida'}
+                        </Badge>
+                      </div>
                       <Badge
                         variant="outline"
                         className={`uppercase text-[8px] font-bold px-1.5 py-0.5 rounded ${
@@ -1294,19 +1341,17 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
                       <span className="text-zinc-200 font-bold">{totalCajas} cajas</span>
                     </div>
 
-                    {req.estado === 'Aprobado' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedRequest(req)
-                          setVoucherOpen(true)
-                        }}
-                        className="border-zinc-850 text-zinc-350 hover:text-emerald-400 h-8 w-full justify-center gap-1 text-[10px]"
-                      >
-                        <FileText className="w-3.5 h-3.5" /> Ver Voucher / Vale de Entrega
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedRequest(req)
+                        setVoucherOpen(true)
+                      }}
+                      className="border-zinc-850 text-zinc-350 hover:text-emerald-400 h-8 w-full justify-center gap-1 text-[10px]"
+                    >
+                      <FileText className="w-3.5 h-3.5" /> Ver Vale / Comprobante
+                    </Button>
                   </div>
                 )
               })
