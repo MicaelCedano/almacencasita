@@ -503,7 +503,7 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
                               [{product.codigo}] {product.nombre}
                             </span>
                             <span className="text-[10px] text-zinc-500">
-                              Color: {product.color} | Memoria: {product.capacidad} | Marca: {product.marca}
+                              Color: {product.color} | Memoria: {product.capacidad} | 📦 Caja de {product.unidades_por_caja} uds
                             </span>
                           </div>
                           <span className="text-[10px] bg-zinc-900 border border-zinc-850 px-1.5 py-0.5 rounded text-zinc-400 font-mono shrink-0 ml-2">
@@ -529,7 +529,7 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
                           [{item.product.codigo}] {item.product.nombre}
                         </span>
                         <span className="text-[10px] text-zinc-500">
-                          {item.product.color} | {item.product.capacidad}
+                          {item.product.color} | {item.product.capacidad} | 📦 {item.product.unidades_por_caja} uds/caja
                         </span>
                       </div>
                       
@@ -542,7 +542,7 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
                           }}
                           className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[11px] rounded h-8 px-1.5 focus:border-emerald-500 font-medium cursor-pointer"
                         >
-                          <option value="cajas">📦 Cajas</option>
+                          <option value="cajas">📦 Cajas ({item.product.unidades_por_caja} uds)</option>
                           <option value="unidades">📱 Uds (Sin caja)</option>
                         </select>
 

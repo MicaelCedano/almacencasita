@@ -123,10 +123,14 @@ export default function ProductList({ products }: ProductListProps) {
     register: registerEdit,
     handleSubmit: handleEditSubmit,
     reset: resetEdit,
+    setValue: setEditValue,
+    watch: watchEdit,
     formState: { errors: editErrors },
   } = useForm({
     resolver: zodResolver(editProductSchema),
   })
+
+  const editingUnitsPerBox = watchEdit('unidades_por_caja')
 
   const filteredProducts = products.filter((p) => {
     const term = search.toLowerCase()
@@ -409,10 +413,34 @@ export default function ProductList({ products }: ProductListProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="edit-unidades">Unidades por Caja</Label>
+                <div className="flex gap-1.5 mb-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setEditValue('unidades_por_caja', 15)}
+                    className={`flex-1 text-[11px] font-mono py-1 rounded border transition-colors ${
+                      Number(editingUnitsPerBox) === 15
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+                        : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-900'
+                    }`}
+                  >
+                    📦 15 uds
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditValue('unidades_por_caja', 20)}
+                    className={`flex-1 text-[11px] font-mono py-1 rounded border transition-colors ${
+                      Number(editingUnitsPerBox) === 20
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+                        : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-900'
+                    }`}
+                  >
+                    📦 20 uds
+                  </button>
+                </div>
                 <Input
                   id="edit-unidades"
                   type="number"
-                  placeholder="10"
+                  placeholder="20"
                   className="bg-zinc-950 border-zinc-800 focus:border-emerald-500 text-xs"
                   {...registerEdit('unidades_por_caja')}
                 />

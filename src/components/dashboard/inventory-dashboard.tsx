@@ -175,6 +175,20 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
     return products.reduce((sum, p) => sum + p.cantidad, 0)
   }, [products])
 
+  const stats15 = useMemo(() => {
+    const prods15 = products.filter(p => p.unidades_por_caja === 15)
+    const totalCajas = prods15.reduce((sum, p) => sum + p.cajas, 0)
+    const totalUnits = prods15.reduce((sum, p) => sum + p.cantidad, 0)
+    return { countModels: prods15.length, totalCajas, totalUnits }
+  }, [products])
+
+  const stats20 = useMemo(() => {
+    const prods20 = products.filter(p => p.unidades_por_caja === 20)
+    const totalCajas = prods20.reduce((sum, p) => sum + p.cajas, 0)
+    const totalUnits = prods20.reduce((sum, p) => sum + p.cantidad, 0)
+    return { countModels: prods20.length, totalCajas, totalUnits }
+  }, [products])
+
   // Shopping cart state (for Almacenista)
   const [cart, setCart] = useState<{ [productId: string]: number }>({})
   const [cartSubmitOpen, setCartSubmitOpen] = useState(false)
@@ -817,14 +831,37 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
       </div>
 
       {/* Summary Metrics Cards */}
-      <div className="grid grid-cols-2 gap-3 max-w-md">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-3 flex items-center gap-3 backdrop-blur-sm">
+          <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0 font-bold font-mono text-xs">
+            15
+          </div>
+          <div>
+            <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider block">Cajas de 15 Uds</span>
+            <span className="text-sm font-bold text-zinc-100 font-mono">{stats15.totalCajas} cajas</span>
+            <span className="text-[9px] text-zinc-500 block">{stats15.countModels} {stats15.countModels === 1 ? 'modelo' : 'modelos'} ({stats15.totalUnits} uds)</span>
+          </div>
+        </div>
+
+        <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-3 flex items-center gap-3 backdrop-blur-sm">
+          <div className="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0 font-bold font-mono text-xs">
+            20
+          </div>
+          <div>
+            <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider block">Cajas de 20 Uds</span>
+            <span className="text-sm font-bold text-zinc-100 font-mono">{stats20.totalCajas} cajas</span>
+            <span className="text-[9px] text-zinc-500 block">{stats20.countModels} {stats20.countModels === 1 ? 'modelo' : 'modelos'} ({stats20.totalUnits} uds)</span>
+          </div>
+        </div>
+
         <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-3 flex items-center gap-3 backdrop-blur-sm">
           <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
             <Layers className="w-4.5 h-4.5" />
           </div>
           <div>
             <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider block">Total Cajas</span>
-            <span className="text-base font-bold text-zinc-100 font-mono">{totalCajas} cajas</span>
+            <span className="text-sm font-bold text-zinc-100 font-mono">{totalCajas} cajas</span>
+            <span className="text-[9px] text-zinc-500 block">General</span>
           </div>
         </div>
 
@@ -833,8 +870,9 @@ export default function InventoryDashboard({ products, role, requests = [] }: In
             <Smartphone className="w-4.5 h-4.5" />
           </div>
           <div>
-            <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider block">Total Equipos</span>
-            <span className="text-base font-bold text-zinc-100 font-mono">{totalEquipos} uds</span>
+            <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider block">Total Celulares</span>
+            <span className="text-sm font-bold text-zinc-100 font-mono">{totalEquipos} uds</span>
+            <span className="text-[9px] text-zinc-500 block">En inventario</span>
           </div>
         </div>
       </div>

@@ -32,6 +32,8 @@ export function NewProductDialog() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(productSchema),
@@ -39,6 +41,8 @@ export function NewProductDialog() {
       unidades_por_caja: 20,
     },
   })
+
+  const selectedUnitsPerBox = watch('unidades_por_caja')
 
   const onSubmit = async (data: ProductFormValues) => {
     setLoading(true)
@@ -93,6 +97,30 @@ export function NewProductDialog() {
 
             <div className="space-y-2">
               <Label htmlFor="unidades_por_caja">Unidades por Caja</Label>
+              <div className="flex gap-1.5 mb-1.5">
+                <button
+                  type="button"
+                  onClick={() => setValue('unidades_por_caja', 15)}
+                  className={`flex-1 text-[11px] font-mono py-1 rounded border transition-colors ${
+                    Number(selectedUnitsPerBox) === 15
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-900'
+                  }`}
+                >
+                  📦 15 uds
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setValue('unidades_por_caja', 20)}
+                  className={`flex-1 text-[11px] font-mono py-1 rounded border transition-colors ${
+                    Number(selectedUnitsPerBox) === 20
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-900'
+                  }`}
+                >
+                  📦 20 uds
+                </button>
+              </div>
               <Input
                 id="unidades_por_caja"
                 type="number"
