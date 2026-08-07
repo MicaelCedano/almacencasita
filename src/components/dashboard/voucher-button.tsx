@@ -160,7 +160,8 @@ export function VoucherButton({ movement, variant = 'ghost', className, children
       // 2. Sub-details
       ctx.fillStyle = '#64748b'
       ctx.font = 'normal 9px system-ui, -apple-system, sans-serif'
-      const detailsText = `[${prod.codigo}]  ·  ${prod.capacidad}  ·  ${prod.color}`
+      const extraInfo = [prod.capacidad, prod.color].filter(x => x && x !== 'N/A').join('  ·  ')
+      const detailsText = `[${prod.codigo}]${extraInfo ? '  ·  ' + extraInfo : ''}`
       const detailsTrunc = detailsText.length > 55 ? detailsText.substring(0, 52) + '...' : detailsText
       ctx.fillText(detailsTrunc, 40, y + 14)
 

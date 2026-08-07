@@ -18,8 +18,8 @@ const editProductSchema = z.object({
   codigo: z.string().min(3, { message: 'Mínimo 3 caracteres' }).toUpperCase(),
   nombre: z.string().min(2, { message: 'Mínimo 2 caracteres' }),
   marca: z.string().min(2, { message: 'Mínimo 2 caracteres' }),
-  color: z.string().min(2, { message: 'Mínimo 2 caracteres' }),
-  capacidad: z.string().min(2, { message: 'Mínimo 2 caracteres (Ej. 8+256GB)' }),
+  color: z.string().optional().transform(val => val?.trim() || 'N/A'),
+  capacidad: z.string().optional().transform(val => val?.trim() || 'N/A'),
   descripcion: z.string().optional(),
   unidades_por_caja: z.coerce.number().int().min(1, { message: 'Debe haber al menos 1 unidad por caja' }),
 })
@@ -254,18 +254,26 @@ export default function ProductList({ products }: ProductListProps) {
                       </div>
                     </TableCell>
                     <TableCell className="py-4 text-xs">
-                      <Badge variant="outline" className="border-emerald-500/25 bg-emerald-500/5 text-emerald-400 font-mono text-[10px] font-bold">
-                        {product.capacidad}
-                      </Badge>
+                      {product.capacidad && product.capacidad !== 'N/A' ? (
+                        <Badge variant="outline" className="border-emerald-500/25 bg-emerald-500/5 text-emerald-400 font-mono text-[10px] font-bold">
+                          {product.capacidad}
+                        </Badge>
+                      ) : (
+                        <span className="text-zinc-600 font-mono text-[10px]">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="py-4 text-xs">
-                      <Badge 
-                        variant="outline" 
-                        style={getColorBadgeStyle(product.color)}
-                        className="border text-[10px] font-medium uppercase"
-                      >
-                        {product.color}
-                      </Badge>
+                      {product.color && product.color !== 'N/A' ? (
+                        <Badge 
+                          variant="outline" 
+                          style={getColorBadgeStyle(product.color)}
+                          className="border text-[10px] font-medium uppercase"
+                        >
+                          {product.color}
+                        </Badge>
+                      ) : (
+                        <span className="text-zinc-600 font-mono text-[10px]">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="py-4 text-xs text-zinc-500 font-mono">
                       {product.unidades_por_caja} uds/caja
@@ -478,10 +486,10 @@ export default function ProductList({ products }: ProductListProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-color">Color</Label>
+                <Label htmlFor="edit-color">Color (Opcional)</Label>
                 <Input
                   id="edit-color"
-                  placeholder="Titanio Negro"
+                  placeholder="Titanio Negro (opcional)"
                   className="bg-zinc-950 border-zinc-800 focus:border-emerald-500 text-xs"
                   {...registerEdit('color')}
                 />
@@ -491,10 +499,10 @@ export default function ProductList({ products }: ProductListProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-capacidad">RAM + GB</Label>
+                <Label htmlFor="edit-capacidad">RAM + GB (Opcional)</Label>
                 <Input
                   id="edit-capacidad"
-                  placeholder="Ej. 8+256GB"
+                  placeholder="Ej. 8+256GB (opcional)"
                   className="bg-zinc-950 border-zinc-800 focus:border-emerald-500 text-xs"
                   {...registerEdit('capacidad')}
                 />

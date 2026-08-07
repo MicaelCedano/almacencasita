@@ -211,7 +211,8 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
       // 2. Sub-details
       ctx.fillStyle = '#64748b'
       ctx.font = 'normal 9px system-ui, -apple-system, sans-serif'
-      const detailsText = `[${item.codigo}]  ·  ${item.capacidad}  ·  ${item.color}`
+      const extraInfo = [item.capacidad, item.color].filter(x => x && x !== 'N/A').join('  ·  ')
+      const detailsText = `[${item.codigo}]${extraInfo ? '  ·  ' + extraInfo : ''}`
       const detailsTrunc = detailsText.length > 55 ? detailsText.substring(0, 52) + '...' : detailsText
       ctx.fillText(detailsTrunc, 40, y + 14)
 

@@ -206,7 +206,8 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
       // 2. Sub-details
       ctx.fillStyle = '#64748b'
       ctx.font = 'normal 9px system-ui, -apple-system, sans-serif'
-      const detailsText = `[${item.codigo}]  ·  ${item.capacidad}  ·  ${item.color}`
+      const extraInfo = [item.capacidad, item.color].filter(x => x && x !== 'N/A').join('  ·  ')
+      const detailsText = `[${item.codigo}]${extraInfo ? '  ·  ' + extraInfo : ''}`
       const detailsTrunc = detailsText.length > 55 ? detailsText.substring(0, 52) + '...' : detailsText
       ctx.fillText(detailsTrunc, 40, y + 14)
 
@@ -503,7 +504,11 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
                               [{product.codigo}] {product.nombre}
                             </span>
                             <span className="text-[10px] text-zinc-500">
-                              Color: {product.color} | Memoria: {product.capacidad} | 📦 Caja de {product.unidades_por_caja} uds
+                              {[
+                                product.color && product.color !== 'N/A' ? `Color: ${product.color}` : null,
+                                product.capacidad && product.capacidad !== 'N/A' ? `Memoria: ${product.capacidad}` : null,
+                                `📦 Caja de ${product.unidades_por_caja} uds`
+                              ].filter(Boolean).join(' | ')}
                             </span>
                           </div>
                           <span className="text-[10px] bg-zinc-900 border border-zinc-850 px-1.5 py-0.5 rounded text-zinc-400 font-mono shrink-0 ml-2">
@@ -529,7 +534,11 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
                           [{item.product.codigo}] {item.product.nombre}
                         </span>
                         <span className="text-[10px] text-zinc-500">
-                          {item.product.color} | {item.product.capacidad} | 📦 {item.product.unidades_por_caja} uds/caja
+                          {[
+                            item.product.color && item.product.color !== 'N/A' ? item.product.color : null,
+                            item.product.capacidad && item.product.capacidad !== 'N/A' ? item.product.capacidad : null,
+                            `📦 ${item.product.unidades_por_caja} uds/caja`
+                          ].filter(Boolean).join(' | ')}
                         </span>
                       </div>
                       

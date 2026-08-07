@@ -47,8 +47,8 @@ export async function createProduct(formData: {
   codigo: string;
   nombre: string;
   marca: string;
-  color: string;
-  capacidad: string;
+  color?: string;
+  capacidad?: string;
   descripcion?: string;
   unidades_por_caja: number;
 }) {
@@ -57,6 +57,9 @@ export async function createProduct(formData: {
   const user = getSessionUser(cookieStore)
   if (!user) return { success: false, error: 'No autenticado' }
   if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden agregar productos.' }
+
+  const colorVal = formData.color?.trim() || 'N/A'
+  const capacidadVal = formData.capacidad?.trim() || 'N/A'
 
   if (isLocal) {
     const db = readLocalDB()
@@ -73,8 +76,8 @@ export async function createProduct(formData: {
       codigo: formData.codigo.toUpperCase(),
       nombre: formData.nombre.trim(),
       marca: formData.marca.trim(),
-      color: formData.color.trim(),
-      capacidad: formData.capacidad.trim(),
+      color: colorVal,
+      capacidad: capacidadVal,
       descripcion: formData.descripcion?.trim(),
       cajas: 0,
       unidades_por_caja: formData.unidades_por_caja,
@@ -99,8 +102,8 @@ export async function createProduct(formData: {
       codigo: formData.codigo,
       nombre: formData.nombre,
       marca: formData.marca,
-      color: formData.color,
-      capacidad: formData.capacidad,
+      color: colorVal,
+      capacidad: capacidadVal,
       descripcion: formData.descripcion,
       cajas: 0,
       unidades_por_caja: formData.unidades_por_caja,
@@ -422,20 +425,26 @@ export async function deleteProduct(id: string) {
   return { success: true }
 }
 
-export async function updateProduct(id: string, formData: {
-  codigo: string;
-  nombre: string;
-  marca: string;
-  color: string;
-  capacidad: string;
-  descripcion?: string;
-  unidades_por_caja: number;
-}) {
+export async function updateProduct(
+  id: string,
+  formData: {
+    codigo: string;
+    nombre: string;
+    marca: string;
+    color?: string;
+    capacidad?: string;
+    descripcion?: string;
+    unidades_por_caja: number;
+  }
+) {
   const isLocal = !isSupabaseConfigured()
   const cookieStore = await cookies()
   const user = getSessionUser(cookieStore)
   if (!user) return { success: false, error: 'No autenticado' }
   if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden editar productos.' }
+
+  const colorVal = formData.color?.trim() || 'N/A'
+  const capacidadVal = formData.capacidad?.trim() || 'N/A'
 
   if (isLocal) {
     const db = readLocalDB()
@@ -455,11 +464,12 @@ export async function updateProduct(id: string, formData: {
     p.codigo = formData.codigo.toUpperCase()
     p.nombre = formData.nombre.trim()
     p.marca = formData.marca.trim()
-    p.color = formData.color.trim()
-    p.capacidad = formData.capacidad.trim()
+    p.color = colorVal
+    p.capacidad = capacidadVal
     p.descripcion = formData.descripcion?.trim()
     p.unidades_por_caja = formData.unidades_por_caja
-    p.cantidad = p.cajas * formData.unidades_por_caja
+    p.cajas = Math.floor((p.cantidad || 0) / formData.unidades_por_caja)
+    p.unidades_sueltas = (p.cantidad || 0) % formData.unidades_por_caja
     p.fecha_actualizacion = new Date().toISOString()
 
     writeLocalDB(db)
@@ -490,8 +500,8 @@ export async function updateProduct(id: string, formData: {
       codigo: formData.codigo,
       nombre: formData.nombre,
       marca: formData.marca,
-      color: formData.color,
-      capacidad: formData.capacidad,
+      color: colorVal,
+      capacidad: capacidadVal,
       descripcion: formData.descripcion,
       unidades_por_caja: formData.unidades_por_caja,
       cantidad: newCantidad,
@@ -845,8 +855,8 @@ export async function createProductsBulk(productsList: {
 
   // Validate
   for (const p of productsList) {
-    if (!p.codigo || !p.nombre || !p.marca || !p.color || !p.capacidad) {
-      return { success: false, error: 'Datos de productos incompletos.' }
+    if (!p.codigo || !p.nombre || !p.marca) {
+      return { success: false, error: 'Datos de productos incompletos (código, nombre y marca son requeridos).' }
     }
   }
 
@@ -864,8 +874,8 @@ export async function createProductsBulk(productsList: {
         codigo: cleanCodigo,
         nombre: p.nombre.trim(),
         marca: p.marca.trim(),
-        color: p.color.trim(),
-        capacidad: p.capacidad.trim(),
+        color: p.color?.trim() || 'N/A',
+        capacidad: p.capacidad?.trim() || 'N/A',
         descripcion: p.descripcion?.trim() || '',
         cajas: 0,
         unidades_por_caja: p.unidades_por_caja || 20,
@@ -890,8 +900,8 @@ export async function createProductsBulk(productsList: {
     codigo: p.codigo.trim().toUpperCase(),
     nombre: p.nombre.trim(),
     marca: p.marca.trim(),
-    color: p.color.trim(),
-    capacidad: p.capacidad.trim(),
+    color: p.color?.trim() || 'N/A',
+    capacidad: p.capacidad?.trim() || 'N/A',
     descripcion: p.descripcion?.trim() || '',
     cajas: 0,
     unidades_por_caja: p.unidades_por_caja || 20,

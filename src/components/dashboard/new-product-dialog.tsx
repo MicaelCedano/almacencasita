@@ -16,8 +16,8 @@ const productSchema = z.object({
   codigo: z.string().min(3, { message: 'Mínimo 3 caracteres' }).toUpperCase(),
   nombre: z.string().min(2, { message: 'Mínimo 2 caracteres' }),
   marca: z.string().min(2, { message: 'Mínimo 2 caracteres' }),
-  color: z.string().min(2, { message: 'Mínimo 2 caracteres' }),
-  capacidad: z.string().min(2, { message: 'Mínimo 2 caracteres (Ej. 8+256GB)' }),
+  color: z.string().optional().transform(val => val?.trim() || 'N/A'),
+  capacidad: z.string().optional().transform(val => val?.trim() || 'N/A'),
   descripcion: z.string().optional(),
   unidades_por_caja: z.coerce.number().int().min(1, { message: 'Debe haber al menos 1 unidad por caja' }),
 })
@@ -162,10 +162,10 @@ export function NewProductDialog() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="color">Color</Label>
+              <Label htmlFor="color">Color (Opcional)</Label>
               <Input
                 id="color"
-                placeholder="Titanio Negro"
+                placeholder="Titanio Negro (opcional)"
                 className="bg-zinc-950 border-zinc-800 focus:border-emerald-500 text-xs"
                 {...register('color')}
               />
@@ -175,10 +175,10 @@ export function NewProductDialog() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="capacidad">RAM + GB</Label>
+              <Label htmlFor="capacidad">RAM + GB (Opcional)</Label>
               <Input
                 id="capacidad"
-                placeholder="Ej. 8+256GB"
+                placeholder="Ej. 8+256GB (opcional)"
                 className="bg-zinc-950 border-zinc-800 focus:border-emerald-500 text-xs"
                 {...register('capacidad')}
               />
