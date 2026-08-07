@@ -36,6 +36,7 @@ interface Product {
   descripcion?: string;
   cajas: number;
   unidades_por_caja: number;
+  unidades_sueltas?: number;
   cantidad: number;
   fecha_creacion: string;
 }
@@ -267,11 +268,13 @@ export default function ProductList({ products }: ProductListProps) {
                     </TableCell>
                     <TableCell className="py-4 text-xs">
                       <div className="flex flex-col font-mono">
-                        <span className={product.cajas === 0 ? 'text-red-400 text-[10px]' : 'text-zinc-300 text-xs font-bold'}>
-                          {product.cajas} {product.cajas === 1 ? 'caja' : 'cajas'}
+                        <span className={product.cantidad === 0 ? 'text-red-400 text-[10px]' : 'text-zinc-300 text-xs font-bold'}>
+                          {product.cajas > 0 ? `${product.cajas} ${product.cajas === 1 ? 'caja' : 'cajas'}` : ''}
+                          {product.cajas > 0 && product.unidades_sueltas ? ' + ' : ''}
+                          {product.unidades_sueltas ? `${product.unidades_sueltas} uds sueltas` : (product.cajas === 0 ? '0 stock' : '')}
                         </span>
                         <span className="text-[10px] text-zinc-500">
-                          {product.cantidad} celulares
+                          {product.cantidad} celulares totales
                         </span>
                       </div>
                     </TableCell>

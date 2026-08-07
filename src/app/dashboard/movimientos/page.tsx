@@ -11,6 +11,7 @@ import { VoucherButton } from '@/components/dashboard/voucher-button'
 interface MovementRecord {
   id: string;
   cantidad: number;
+  unidad_medida?: 'cajas' | 'unidades';
   tipo: 'Entrada' | 'Salida';
   motivo: string;
   fecha: string;
@@ -46,6 +47,7 @@ export default async function MovimientosPage() {
       return {
         id: m.id,
         cantidad: m.cantidad,
+        unidad_medida: m.unidad_medida,
         tipo: m.tipo,
         motivo: m.motivo,
         fecha: m.fecha,
@@ -141,7 +143,7 @@ export default async function MovimientosPage() {
                         </TableCell>
                         <TableCell className="py-4 text-xs font-mono font-bold">
                           <span className={isEntrada ? 'text-emerald-400' : 'text-amber-400'}>
-                            {isEntrada ? '+' : '-'}{mov.cantidad} cajas
+                            {isEntrada ? '+' : '-'}{mov.cantidad} {mov.unidad_medida === 'unidades' ? 'uds' : 'cajas'}
                           </span>
                         </TableCell>
                         <TableCell className="py-4 text-xs text-zinc-400 max-w-[240px] truncate">
@@ -286,7 +288,7 @@ export default async function MovimientosPage() {
                       </TableCell>
                       <TableCell className="py-4 text-xs font-mono font-bold">
                         <span className={isEntrada ? 'text-emerald-400' : 'text-amber-400'}>
-                          {isEntrada ? '+' : '-'}{mov.cantidad} cajas
+                          {isEntrada ? '+' : '-'}{mov.cantidad} {mov.unidad_medida === 'unidades' ? 'uds' : 'cajas'}
                         </span>
                       </TableCell>
                       <TableCell className="py-4 text-xs text-zinc-400 max-w-[240px] truncate">

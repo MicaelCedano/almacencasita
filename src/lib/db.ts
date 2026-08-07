@@ -24,14 +24,16 @@ export interface LocalProduct {
   descripcion?: string;
   cajas: number;
   unidades_por_caja: number;
-  cantidad: number; // Total units: cajas * unidades_por_caja
+  unidades_sueltas?: number;
+  cantidad: number; // Total units: (cajas * unidades_por_caja) + unidades_sueltas
   fecha_creacion: string;
   fecha_actualizacion: string;
 }
 
 export interface LocalRequestItem {
   producto_id: string;
-  cantidad: number; // in boxes
+  cantidad: number; // Quantity
+  unidad_medida?: 'cajas' | 'unidades'; // Default 'cajas'
 }
 
 export interface LocalRequest {
@@ -54,7 +56,8 @@ export interface LocalDB {
 export interface LocalMovement {
   id: string;
   producto_id: string;
-  cantidad: number; // Quantity in boxes
+  cantidad: number;
+  unidad_medida?: 'cajas' | 'unidades';
   tipo: 'Entrada' | 'Salida';
   motivo: string;
   usuario_id: string;

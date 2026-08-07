@@ -9,6 +9,7 @@ import { ShieldAlert } from 'lucide-react'
 interface RequestItemDetails {
   producto_id: string;
   cantidad: number;
+  unidad_medida?: 'cajas' | 'unidades';
   codigo: string;
   nombre: string;
   color: string;
@@ -40,31 +41,38 @@ export const dynamic = 'force-dynamic'
 
 export default async function SolicitudesPage() {
   const isLocal = !isSupabaseConfigured()
-  let role: 'admin' | 'empleado' = 'empleado'
-
-  if (isLocal) {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) redirect('/login')
-    const user = JSON.parse(sessionCookie.value)
-    role = user.role
-  } else {
-    const supabase = await createClient()
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('local_session_user')
-    if (!sessionCookie) redirect('/login')
-    const user = JSON.parse(sessionCookie.value)
-    role = user.role
-  }
-
-  // Admins only
-  if (role !== 'admin') {
-    redirect('/dashboard')
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get('local_session_user')
+  if (!sessionCookie) redirect('/login')
+  const user = JSON.parse(sessionCookie.value)
+  
+  if (user.role !== 'admin') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <ShieldAlert className="w-12 h-12 text-red-400 mb-3" />
+        <h2 className="text-xl font-bold text-zinc-100 mb-1">Acceso Restringido</h2>
+        <p className="text-zinc-400 text-xs max-w-sm">
+          Solo los administradores pueden gestionar y aprobar solicitudes de mercancía.
+        </p>
+      </div>
+    )
   }
 
   let requests: RequestRecord[] = []
-  let pendingUsers: UserRecord[] = []
-  let allUsers: UserRecord[] = []
+  let pendingUsers: Array<{
+    id: string;
+    username: string;
+    fullName: string;
+    role: 'admin' | 'empleado';
+    approved: boolean;
+  }> = []
+  let allUsers: Array<{
+    id: string;
+    username: string;
+    fullName: string;
+    role: 'admin' | 'empleado';
+    approved: boolean;
+  }> = []
 
   if (isLocal) {
     const db = readLocalDB()
@@ -77,6 +85,7 @@ export default async function SolicitudesPage() {
         return {
           producto_id: item.producto_id,
           cantidad: item.cantidad,
+          unidad_medida: item.unidad_medida,
           codigo: product?.codigo || 'N/A',
           nombre: product?.nombre || 'Celular Eliminado',
           color: product?.color || 'N/A',

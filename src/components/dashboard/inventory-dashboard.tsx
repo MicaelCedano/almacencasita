@@ -47,7 +47,8 @@ import { toast } from 'sonner'
 
 interface Movement {
   tipo: 'Entrada' | 'Salida';
-  cantidad: number; // in boxes
+  cantidad: number;
+  unidad_medida?: 'cajas' | 'unidades';
   fecha: string;
   motivo: string;
 }
@@ -62,6 +63,7 @@ interface Product {
   descripcion?: string;
   cajas: number;
   unidades_por_caja: number;
+  unidades_sueltas?: number;
   cantidad: number;
   fecha_creacion: string;
   fecha_actualizacion: string;
@@ -71,6 +73,7 @@ interface Product {
 interface RequestItemDetails {
   producto_id: string;
   cantidad: number;
+  unidad_medida?: 'cajas' | 'unidades';
   codigo: string;
   nombre: string;
   color: string;

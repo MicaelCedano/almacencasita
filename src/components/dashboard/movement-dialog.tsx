@@ -37,6 +37,7 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
   const [selectedItems, setSelectedItems] = useState<{
     product: typeof products[number];
     cantidad: number | '';
+    unidad_medida: 'cajas' | 'unidades';
   }[]>([])
 
   const [motivo, setMotivo] = useState('')
@@ -74,7 +75,7 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
       toast.warning('Este producto ya está en la lista.')
       return
     }
-    setSelectedItems((prev) => [...prev, { product, cantidad: 1 }])
+    setSelectedItems((prev) => [...prev, { product, cantidad: 1, unidad_medida: 'cajas' }])
     setPickerOpen(false)
     setSearchQuery('')
     toast.success(`Añadido: ${product.nombre}`)
@@ -210,14 +211,20 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
       ctx.fillText(detailsTrunc, 40, y + 14)
 
       // 3. Quantity
+      const isUnidades = item.unidad_medida === 'unidades'
       ctx.textAlign = 'right'
       ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
       ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
-      ctx.fillText(`${item.cantidad} cajas`, 458, y + 8)
+      const qtyLabel = isUnidades ? `${item.cantidad} uds (sin caja)` : `${item.cantidad} cajas`
+      ctx.fillText(qtyLabel, 458, y + 8)
       ctx.textAlign = 'left' // reset
 
-      totalCajas += item.cantidad
-      totalUnits += item.cantidad * item.unidades_por_caja
+      if (isUnidades) {
+        totalUnits += item.cantidad
+      } else {
+        totalCajas += item.cantidad
+        totalUnits += item.cantidad * (item.unidades_por_caja || 20)
+      }
       y += 36
     }
 
@@ -350,11 +357,16 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
     // Client-side validation and stock check
     for (const item of selectedItems) {
       if (item.cantidad === '' || item.cantidad <= 0) {
-        toast.error(`Por favor, ingresa una cantidad válida de cajas (mayor que 0) para ${item.product.nombre}.`)
+        toast.error(`Por favor, ingresa una cantidad válida (mayor que 0) para ${item.product.nombre}.`)
         return
       }
-      if (tipo === 'Salida' && item.product.cajas < item.cantidad) {
-        toast.error(`Stock insuficiente para ${item.product.nombre}. Solo hay ${item.product.cajas} cajas disponibles.`)
+      const isUnidades = item.unidad_medida === 'unidades'
+      const unitsNeeded = isUnidades ? Number(item.cantidad) : Number(item.cantidad) * item.product.unidades_por_caja
+      const currentTotal = item.product.cantidad ?? (item.product.cajas * item.product.unidades_por_caja)
+
+      if (tipo === 'Salida' && currentTotal < unitsNeeded) {
+        const requestedDesc = isUnidades ? `${item.cantidad} unidades` : `${item.cantidad} cajas`
+        toast.error(`Stock insuficiente para ${item.product.nombre}. Solicitado: ${requestedDesc}, Disponible: ${currentTotal} celulares.`)
         return
       }
     }
@@ -365,7 +377,8 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
         const res = await createWithdrawalRequest({
           items: selectedItems.map(item => ({
             producto_id: item.product.id,
-            cantidad: Number(item.cantidad)
+            cantidad: Number(item.cantidad),
+            unidad_medida: item.unidad_medida
           })),
           motivo: motivo.trim() || 'Sin descripción',
           tipo
@@ -383,7 +396,8 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
           motivo: motivo.trim() || 'Sin descripción',
           items: selectedItems.map(item => ({
             producto_id: item.product.id,
-            cantidad: Number(item.cantidad)
+            cantidad: Number(item.cantidad),
+            unidad_medida: item.unidad_medida
           }))
         })
 
@@ -439,8 +453,8 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
                   ? 'Envía una solicitud al administrador para ingresar stock en un solo lote.'
                   : 'Envía una solicitud al administrador para retirar stock en un solo lote.')
                 : (tipo === 'Entrada'
-                  ? 'Agrega stock de múltiples modelos de celulares al almacén en un solo lote.'
-                  : 'Retira stock de múltiples modelos de celulares del almacén en un solo lote.')}
+                  ? 'Agrega stock de múltiples modelos de celulares al almacén (por cajas o sin caja).'
+                  : 'Retira stock de múltiples modelos de celulares del almacén (por cajas o sin caja).')}
             </DialogDescription>
           </DialogHeader>
 
@@ -509,8 +523,8 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
               {selectedItems.length > 0 ? (
                 <div className="space-y-2 max-h-52 overflow-y-auto border border-zinc-800/80 rounded-lg p-2 bg-zinc-950/40">
                   {selectedItems.map((item, index) => (
-                    <div key={item.product.id} className="flex items-center justify-between gap-3 bg-zinc-900/40 border border-zinc-850 p-2 rounded-lg text-xs">
-                      <div className="flex-1 truncate">
+                    <div key={item.product.id} className="flex items-center justify-between gap-2 bg-zinc-900/40 border border-zinc-850 p-2 rounded-lg text-xs">
+                      <div className="flex-1 truncate pr-1">
                         <span className="font-semibold text-zinc-200 block truncate">
                           [{item.product.codigo}] {item.product.nombre}
                         </span>
@@ -519,8 +533,19 @@ export function MovementDialog({ tipo, role = 'admin', products }: MovementDialo
                         </span>
                       </div>
                       
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] text-zinc-550">Cajas:</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <select
+                          value={item.unidad_medida}
+                          onChange={(e) => {
+                            const val = e.target.value as 'cajas' | 'unidades'
+                            setSelectedItems(prev => prev.map((it, idx) => idx === index ? { ...it, unidad_medida: val } : it))
+                          }}
+                          className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[11px] rounded h-8 px-1.5 focus:border-emerald-500 font-medium cursor-pointer"
+                        >
+                          <option value="cajas">📦 Cajas</option>
+                          <option value="unidades">📱 Uds (Sin caja)</option>
+                        </select>
+
                         <Input
                           type="number"
                           min="1"

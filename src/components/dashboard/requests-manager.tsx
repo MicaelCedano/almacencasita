@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 interface RequestItemDetails {
   producto_id: string;
   cantidad: number;
+  unidad_medida?: 'cajas' | 'unidades';
   codigo: string;
   nombre: string;
   color: string;
@@ -215,14 +216,19 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
       ctx.fillText(detailsTrunc, 40, y + 14)
 
       // 3. Quantity
+      const isUnidades = item.unidad_medida === 'unidades'
       ctx.textAlign = 'right'
       ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
       ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
-      ctx.fillText(`${item.cantidad} cajas`, 458, y + 8)
+      ctx.fillText(isUnidades ? `${item.cantidad} uds (sin caja)` : `${item.cantidad} cajas`, 458, y + 8)
       ctx.textAlign = 'left' // reset
 
-      totalCajas += item.cantidad
-      totalUnits += item.cantidad * item.unidades_por_caja
+      if (isUnidades) {
+        totalUnits += item.cantidad
+      } else {
+        totalCajas += item.cantidad
+        totalUnits += item.cantidad * item.unidades_por_caja
+      }
       y += 36
     }
 
@@ -449,7 +455,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
                                 [{item.codigo}] {item.nombre}
                               </span>
                               <span className="text-[10px] text-zinc-500 font-mono">
-                                Color: {item.color} | Memoria: {item.capacidad} | *{item.cantidad} cajas*
+                                Color: {item.color} | Memoria: {item.capacidad} | *{item.unidad_medida === 'unidades' ? `${item.cantidad} uds (sin caja)` : `${item.cantidad} cajas`}*
                               </span>
                             </div>
                           ))}
@@ -574,7 +580,7 @@ export default function RequestsManager({ requests, pendingUsers, allUsers = [] 
                           [{item.codigo}] {item.color} | {item.capacidad}
                         </div>
                         <div className="text-right text-[10px] text-zinc-300 font-mono mt-1 font-bold">
-                          Cantidad: {item.cantidad} cajas
+                          Cantidad: {item.unidad_medida === 'unidades' ? `${item.cantidad} uds (sin caja)` : `${item.cantidad} cajas`}
                         </div>
                       </div>
                     ))}

@@ -24,6 +24,7 @@ interface MovementForVoucher {
   fecha: string;
   tipo: 'Entrada' | 'Salida';
   cantidad: number;
+  unidad_medida?: 'cajas' | 'unidades';
   motivo: string;
   products: ProductDetails | null;
   profiles: UserProfile | null;
@@ -164,10 +165,11 @@ export function VoucherButton({ movement, variant = 'ghost', className, children
       ctx.fillText(detailsTrunc, 40, y + 14)
 
       // 3. Quantity
+      const isUnidades = movement.unidad_medida === 'unidades'
       ctx.textAlign = 'right'
       ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
       ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
-      ctx.fillText(`${movement.cantidad} cajas`, 458, y + 8)
+      ctx.fillText(isUnidades ? `${movement.cantidad} uds (sin caja)` : `${movement.cantidad} cajas`, 458, y + 8)
       ctx.textAlign = 'left' // reset
     } else {
       ctx.fillStyle = '#f43f5e'
@@ -185,15 +187,16 @@ export function VoucherButton({ movement, variant = 'ghost', className, children
     ctx.stroke()
 
     // Totals Section
+    const isUnidadesMov = movement.unidad_medida === 'unidades'
     y += 15
     ctx.font = 'bold 11px system-ui, -apple-system, sans-serif'
     ctx.fillStyle = '#64748b'
-    ctx.fillText('TOTAL CAJAS:', 40, y)
+    ctx.fillText('CANTIDAD REGISTRADA:', 40, y)
     
     ctx.textAlign = 'right'
     ctx.fillStyle = isEntrada ? '#10b981' : '#f43f5e'
     ctx.font = 'bold 13px system-ui, -apple-system, sans-serif'
-    ctx.fillText(`${movement.cantidad} cajas`, 458, y)
+    ctx.fillText(isUnidadesMov ? `${movement.cantidad} uds (sin caja)` : `${movement.cantidad} cajas`, 458, y)
     ctx.textAlign = 'left' // reset
 
     if (prod) {
@@ -205,7 +208,7 @@ export function VoucherButton({ movement, variant = 'ghost', className, children
       ctx.textAlign = 'right'
       ctx.fillStyle = '#f8fafc'
       ctx.font = 'bold 12px system-ui, -apple-system, sans-serif'
-      const totalUnits = movement.cantidad * prod.unidades_por_caja
+      const totalUnits = isUnidadesMov ? movement.cantidad : movement.cantidad * prod.unidades_por_caja
       ctx.fillText(`${totalUnits} celulares`, 458, y)
       ctx.textAlign = 'left' // reset
     }

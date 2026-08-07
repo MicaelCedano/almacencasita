@@ -17,6 +17,32 @@ function getSessionUser(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   }
 }
 
+/** Helper to update stock (boxes, loose units, and total quantity) */
+function updateProductStock(
+  product: {
+    cajas: number;
+    unidades_por_caja: number;
+    unidades_sueltas?: number;
+    cantidad: number;
+    fecha_actualizacion?: string;
+  },
+  cantidad: number,
+  unidadMedida: 'cajas' | 'unidades' = 'cajas',
+  tipo: 'Entrada' | 'Salida' = 'Entrada'
+) {
+  const unitsPerBox = product.unidades_por_caja || 20
+  const deltaUnits = unidadMedida === 'unidades' ? cantidad : cantidad * unitsPerBox
+  const change = tipo === 'Entrada' ? deltaUnits : -deltaUnits
+  
+  const currentTotalUnits = product.cantidad ?? (product.cajas * unitsPerBox + (product.unidades_sueltas || 0))
+  const newTotalUnits = Math.max(0, currentTotalUnits + change)
+  
+  product.cantidad = newTotalUnits
+  product.cajas = Math.floor(newTotalUnits / unitsPerBox)
+  product.unidades_sueltas = newTotalUnits % unitsPerBox
+  product.fecha_actualizacion = new Date().toISOString()
+}
+
 export async function createProduct(formData: {
   codigo: string;
   nombre: string;
@@ -95,6 +121,7 @@ export async function createProduct(formData: {
 export async function createMovement(formData: {
   producto_id: string;
   cantidad: number;
+  unidad_medida?: 'cajas' | 'unidades';
   tipo: 'Entrada' | 'Salida';
   motivo: string;
 }) {
@@ -104,6 +131,8 @@ export async function createMovement(formData: {
   if (!user) return { success: false, error: 'No autenticado' }
   if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden registrar movimientos.' }
 
+  const unidadMedida = formData.unidad_medida || 'cajas'
+
   if (isLocal) {
     const db = readLocalDB()
     const product = db.products.find((p) => p.id === formData.producto_id)
@@ -111,22 +140,23 @@ export async function createMovement(formData: {
       return { success: false, error: 'Producto no encontrado.' }
     }
 
+    const unitsPerBox = product.unidades_por_caja || 20
+    const deltaUnits = unidadMedida === 'unidades' ? formData.cantidad : formData.cantidad * unitsPerBox
+    const currentTotalUnits = product.cantidad ?? (product.cajas * unitsPerBox + (product.unidades_sueltas || 0))
+
     if (formData.tipo === 'Salida') {
-      if (product.cajas < formData.cantidad) {
-        return { success: false, error: 'Stock de cajas insuficiente para realizar la salida.' }
+      if (currentTotalUnits < deltaUnits) {
+        return { success: false, error: `Stock insuficiente para realizar la salida. Disponible: ${currentTotalUnits} celulares (${product.cajas} cajas y ${product.unidades_sueltas || 0} uds sueltas).` }
       }
-      product.cajas -= formData.cantidad
-    } else {
-      product.cajas += formData.cantidad
     }
 
-    product.cantidad = product.cajas * product.unidades_por_caja
-    product.fecha_actualizacion = new Date().toISOString()
+    updateProductStock(product, formData.cantidad, unidadMedida, formData.tipo)
 
     const newMovement = {
       id: 'mov_' + Math.random().toString(36).substr(2, 9),
       producto_id: formData.producto_id,
       cantidad: formData.cantidad,
+      unidad_medida: unidadMedida,
       tipo: formData.tipo,
       motivo: formData.motivo.trim(),
       usuario_id: user.id,
@@ -145,6 +175,7 @@ export async function createMovement(formData: {
         fecha: newMovement.fecha,
         tipo: newMovement.tipo,
         cantidad: newMovement.cantidad,
+        unidad_medida: newMovement.unidad_medida,
         motivo: newMovement.motivo,
         product: {
           codigo: product.codigo,
@@ -199,6 +230,7 @@ export async function createMovement(formData: {
       fecha: newMov.fecha,
       tipo: formData.tipo,
       cantidad: formData.cantidad,
+      unidad_medida: unidadMedida,
       motivo: formData.motivo,
       product: {
         codigo: product.codigo,
@@ -218,7 +250,7 @@ export async function createMovement(formData: {
 export async function createMovementsBulk(formData: {
   tipo: 'Entrada' | 'Salida';
   motivo: string;
-  items: { producto_id: string; cantidad: number }[];
+  items: { producto_id: string; cantidad: number; unidad_medida?: 'cajas' | 'unidades' }[];
 }) {
   const isLocal = !isSupabaseConfigured()
   const cookieStore = await cookies()
@@ -241,22 +273,25 @@ export async function createMovementsBulk(formData: {
         return { success: false, error: 'Producto no encontrado.' }
       }
 
+      const unidadMedida = item.unidad_medida || 'cajas'
+      const unitsPerBox = product.unidades_por_caja || 20
+      const deltaUnits = unidadMedida === 'unidades' ? item.cantidad : item.cantidad * unitsPerBox
+      const currentTotalUnits = product.cantidad ?? (product.cajas * unitsPerBox + (product.unidades_sueltas || 0))
+
       if (formData.tipo === 'Salida') {
-        if (product.cajas < item.cantidad) {
-          return { success: false, error: `Stock de cajas insuficiente para realizar la salida de ${product.nombre}.` }
+        if (currentTotalUnits < deltaUnits) {
+          const reqStr = unidadMedida === 'unidades' ? `${item.cantidad} unidades` : `${item.cantidad} cajas (${deltaUnits} unidades)`
+          return { success: false, error: `Stock insuficiente para ${product.nombre} (Solicitado: ${reqStr}, Disponible: ${currentTotalUnits} celulares).` }
         }
-        product.cajas -= item.cantidad
-      } else {
-        product.cajas += item.cantidad
       }
 
-      product.cantidad = product.cajas * product.unidades_por_caja
-      product.fecha_actualizacion = new Date().toISOString()
+      updateProductStock(product, item.cantidad, unidadMedida, formData.tipo)
 
       db.movements.push({
         id: 'mov_' + Math.random().toString(36).substr(2, 9),
         producto_id: item.producto_id,
         cantidad: item.cantidad,
+        unidad_medida: unidadMedida,
         tipo: formData.tipo,
         motivo: formData.motivo.trim(),
         usuario_id: user.id,
@@ -271,6 +306,7 @@ export async function createMovementsBulk(formData: {
         capacidad: product.capacidad,
         unidades_por_caja: product.unidades_por_caja,
         cantidad: item.cantidad,
+        unidad_medida: unidadMedida,
       })
     }
 
@@ -308,6 +344,8 @@ export async function createMovementsBulk(formData: {
       return { success: false, error: 'Error al obtener detalles de uno de los productos.' }
     }
 
+    const unidadMedida = item.unidad_medida || 'cajas'
+
     const { error } = await supabase
       .from('movements')
       .insert({
@@ -330,6 +368,7 @@ export async function createMovementsBulk(formData: {
       capacidad: product.capacidad,
       unidades_por_caja: product.unidades_por_caja,
       cantidad: item.cantidad,
+      unidad_medida: unidadMedida,
     })
   }
 
@@ -531,7 +570,7 @@ export async function deleteUser(userId: string) {
 }
 
 export async function createWithdrawalRequest(formData: {
-  items: { producto_id: string; cantidad: number }[];
+  items: { producto_id: string; cantidad: number; unidad_medida?: 'cajas' | 'unidades' }[];
   motivo: string;
   tipo?: 'Entrada' | 'Salida';
 }) {
@@ -604,8 +643,17 @@ export async function approveWithdrawalRequest(requestId: string) {
       for (const item of request.items) {
         const product = db.products.find((p) => p.id === item.producto_id)
         if (!product) return { success: false, error: 'Producto no encontrado.' }
-        if (product.cajas < item.cantidad) {
-          return { success: false, error: `Stock insuficiente para ${product.nombre} (Solicitado: ${item.cantidad} cajas, Disponible: ${product.cajas} cajas).` }
+        
+        const unidadMedida = item.unidad_medida || 'cajas'
+        const unitsPerBox = product.unidades_por_caja || 20
+        const deltaUnits = unidadMedida === 'unidades' ? item.cantidad : item.cantidad * unitsPerBox
+        const currentTotalUnits = product.cantidad ?? (product.cajas * unitsPerBox + (product.unidades_sueltas || 0))
+
+        if (currentTotalUnits < deltaUnits) {
+          return { 
+            success: false, 
+            error: `Stock insuficiente para ${product.nombre} (Solicitado: ${item.cantidad} ${unidadMedida === 'unidades' ? 'unidades' : 'cajas'}, Disponible: ${currentTotalUnits} celulares).` 
+          }
         }
       }
     }
@@ -615,18 +663,15 @@ export async function approveWithdrawalRequest(requestId: string) {
 
     for (const item of request.items) {
       const product = db.products.find((p) => p.id === item.producto_id)!
-      if (isEntrada) {
-        product.cajas += item.cantidad
-      } else {
-        product.cajas -= item.cantidad
-      }
-      product.cantidad = product.cajas * product.unidades_por_caja
-      product.fecha_actualizacion = new Date().toISOString()
+      const unidadMedida = item.unidad_medida || 'cajas'
+
+      updateProductStock(product, item.cantidad, unidadMedida, isEntrada ? 'Entrada' : 'Salida')
 
       db.movements.push({
         id: 'mov_' + Math.random().toString(36).substr(2, 9),
         producto_id: item.producto_id,
         cantidad: item.cantidad,
+        unidad_medida: unidadMedida,
         tipo: isEntrada ? 'Entrada' : 'Salida',
         motivo: `Aprobado - Solicitud de ${requesterName}. Motivo: ${request.motivo}`,
         usuario_id: request.usuario_id,
