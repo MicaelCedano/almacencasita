@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/auth/actions'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Warehouse, Package, History, LogOut, User, Shield, Smartphone, ShieldAlert } from 'lucide-react'
+import { Warehouse, Package, History, LogOut, User, Shield, Smartphone, ShieldAlert, Database } from 'lucide-react'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { isSupabaseConfigured, readLocalDB } from '@/lib/db'
@@ -108,6 +108,13 @@ export default async function DashboardLayout({
                 <ShieldAlert className="w-4 h-4 text-zinc-400" />
                 <span>Solicitudes</span>
               </Link>
+              <Link
+                href="/dashboard/respaldos"
+                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg text-zinc-200 hover:text-zinc-50 hover:bg-zinc-800/60 transition-all duration-200"
+              >
+                <Database className="w-4 h-4 text-zinc-400" />
+                <span>Respaldos</span>
+              </Link>
             </>
           )}
         </nav>
@@ -187,6 +194,12 @@ export default async function DashboardLayout({
                 className="text-xs font-medium text-zinc-300 hover:text-zinc-50 py-1"
               >
                 Solicitudes
+              </Link>
+              <Link
+                href="/dashboard/respaldos"
+                className="text-xs font-medium text-zinc-300 hover:text-zinc-50 py-1"
+              >
+                Respaldos
               </Link>
             </>
           )}

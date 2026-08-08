@@ -932,3 +932,196 @@ export async function createProductsBulk(productsList: {
   revalidatePath('/dashboard/productos')
   return { success: true, count: filteredRows.length }
 }
+
+export async function exportFullBackup() {
+  const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden exportar respaldos.' }
+
+  const exportedAt = new Date().toISOString()
+
+  if (isLocal) {
+    const db = readLocalDB()
+    const backup = {
+      app: 'Almacén Casita',
+      version: '1.0',
+      exportedAt,
+      mode: 'local',
+      stats: {
+        productsCount: db.products?.length || 0,
+        movementsCount: db.movements?.length || 0,
+        requestsCount: db.requests?.length || 0,
+        usersCount: db.users?.length || 0,
+      },
+      data: {
+        products: db.products || [],
+        movements: db.movements || [],
+        requests: db.requests || [],
+        users: (db.users || []).map((u) => ({
+          id: u.id,
+          username: u.username,
+          fullName: u.fullName,
+          role: u.role,
+          approved: u.approved,
+        })),
+      },
+    }
+    return { success: true, backup }
+  }
+
+  // --- Supabase DB ---
+  const supabase = await createClient()
+
+  const [
+    { data: products, error: prodErr },
+    { data: movements, error: movErr },
+    { data: requests, error: reqErr },
+    { data: profiles, error: profErr },
+  ] = await Promise.all([
+    supabase.from('products').select('*'),
+    supabase.from('movements').select('*'),
+    supabase.from('requests').select('*'),
+    supabase.from('profiles').select('*'),
+  ])
+
+  if (prodErr || movErr || reqErr || profErr) {
+    return {
+      success: false,
+      error:
+        prodErr?.message ||
+        movErr?.message ||
+        reqErr?.message ||
+        profErr?.message ||
+        'Error consultando datos de Supabase',
+    }
+  }
+
+  const backup = {
+    app: 'Almacén Casita',
+    version: '1.0',
+    exportedAt,
+    mode: 'supabase',
+    stats: {
+      productsCount: products?.length || 0,
+      movementsCount: movements?.length || 0,
+      requestsCount: requests?.length || 0,
+      usersCount: profiles?.length || 0,
+    },
+    data: {
+      products: products || [],
+      movements: movements || [],
+      requests: requests || [],
+      users: profiles || [],
+    },
+  }
+
+  return { success: true, backup }
+}
+
+export async function restoreFullBackup(backupContent: {
+  data?: {
+    products?: any[];
+    movements?: any[];
+    requests?: any[];
+    users?: any[];
+  };
+}) {
+  const isLocal = !isSupabaseConfigured()
+  const cookieStore = await cookies()
+  const user = getSessionUser(cookieStore)
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role !== 'admin') return { success: false, error: 'No autorizado. Solo administradores pueden restaurar respaldos.' }
+
+  if (!backupContent || !backupContent.data) {
+    return { success: false, error: 'Estructura de archivo de respaldo no válida.' }
+  }
+
+  const { products = [], movements = [], requests = [], users = [] } = backupContent.data
+
+  if (isLocal) {
+    const currentDb = readLocalDB()
+
+    // Build map for existing users to preserve passwords if not included in backup
+    const existingUsersMap = new Map(currentDb.users.map((u) => [u.id, u]))
+
+    const restoredUsers = users.map((u: any) => {
+      const existing = existingUsersMap.get(u.id) || currentDb.users.find(x => x.username === u.username)
+      return {
+        id: u.id || existing?.id || 'usr_' + Math.random().toString(36).substr(2, 9),
+        username: u.username,
+        fullName: u.fullName || u.full_name || u.username,
+        role: u.role || 'empleado',
+        approved: u.approved !== undefined ? u.approved : true,
+        password: existing?.password || '123456',
+      }
+    })
+
+    // If no users in backup, keep current users
+    const finalUsers = restoredUsers.length > 0 ? restoredUsers : currentDb.users
+
+    const newDb = {
+      users: finalUsers,
+      products: products,
+      movements: movements,
+      requests: requests,
+    }
+
+    writeLocalDB(newDb)
+
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/productos')
+    revalidatePath('/dashboard/movimientos')
+    revalidatePath('/dashboard/solicitudes')
+    revalidatePath('/dashboard/respaldos')
+
+    return {
+      success: true,
+      stats: {
+        products: products.length,
+        movements: movements.length,
+        requests: requests.length,
+        users: finalUsers.length,
+      },
+    }
+  }
+
+  // --- Supabase DB ---
+  const supabase = await createClient()
+
+  // Clean and upsert products
+  if (products.length > 0) {
+    const { error: pErr } = await supabase.from('products').upsert(products)
+    if (pErr) return { success: false, error: 'Error al restaurar productos: ' + pErr.message }
+  }
+
+  // Upsert requests
+  if (requests.length > 0) {
+    const { error: rErr } = await supabase.from('requests').upsert(requests)
+    if (rErr) return { success: false, error: 'Error al restaurar solicitudes: ' + rErr.message }
+  }
+
+  // Upsert movements
+  if (movements.length > 0) {
+    const { error: mErr } = await supabase.from('movements').upsert(movements)
+    if (mErr) return { success: false, error: 'Error al restaurar movimientos: ' + mErr.message }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/dashboard/productos')
+  revalidatePath('/dashboard/movimientos')
+  revalidatePath('/dashboard/solicitudes')
+  revalidatePath('/dashboard/respaldos')
+
+  return {
+    success: true,
+    stats: {
+      products: products.length,
+      movements: movements.length,
+      requests: requests.length,
+      users: users.length,
+    },
+  }
+}
+
